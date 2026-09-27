@@ -43,6 +43,12 @@ class Settings(BaseSettings):
 
     dashboard_api_url: str = "http://localhost:8000"
 
+    # Hindsight Memory Service Configuration
+    hindsight_api_url: str = "http://localhost:8888"
+    hindsight_api_key: str = ""
+    hindsight_enabled: bool = False
+    hindsight_timeout: float = 30.0
+
     def resolve(self, path: Path) -> Path:
         """Resolve relative paths against the project root."""
         return path if path.is_absolute() else self.workspace_dir / path

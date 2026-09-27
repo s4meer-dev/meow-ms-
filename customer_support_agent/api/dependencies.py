@@ -47,3 +47,8 @@ def get_draft_service() -> DraftService:
 
 def get_knowledge_service(settings: Settings = Depends(get_settings_dep)) -> KnowledgeService:
     return KnowledgeService(settings=settings)
+
+
+def get_hindsight_service(settings: Settings = Depends(get_settings_dep)):
+    from customer_support_agent.integrations.hindsight import HindsightMemoryService
+    return HindsightMemoryService(settings=settings)

@@ -22,6 +22,7 @@ dependencies = [
   # Optional local embedding stack (disabled to keep EC2 image size low):
   # "sentence-transformers",
   # "torch",
+  "hindsight-client>=0.10.1",
 ]
 
 [tool.uv]

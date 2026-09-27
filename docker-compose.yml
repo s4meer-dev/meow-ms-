@@ -1,4 +1,26 @@
 services:
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    container_name: meow-hindsight
+    restart: unless-stopped
+    ports:
+      - "8888:8888"
+      - "9999:9999"
+    environment:
+      - HINDSIGHT_API_LLM_PROVIDER=${HINDSIGHT_API_LLM_PROVIDER:-groq}
+      - HINDSIGHT_API_LLM_API_KEY=${GROQ_API_KEY:-}
+      - HINDSIGHT_API_LLM_MODEL=${HINDSIGHT_API_LLM_MODEL:-llama-3.3-70b-versatile}
+    volumes:
+      - hindsight-data:/home/hindsight/.pg0
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - default
+
   api:
     build: .
     container_name: support-copilot-api
@@ -6,7 +28,10 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - path: .env
+        required: false
+    environment:
+      - HINDSIGHT_API_URL=http://hindsight:8888
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8000/health || exit 1"]
       interval: 5s
@@ -29,7 +54,8 @@ services:
     ports:
       - "8501:8501"
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
       - API_BASE_URL=http://api:8000
     depends_on:
@@ -40,3 +66,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./knowledge_base:/app/knowledge_base
+
+volumes:
+  hindsight-data:
+

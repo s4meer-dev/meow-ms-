@@ -29,6 +29,26 @@ Customer Support Agent Live is an AI-powered support copilot that helps human su
 | Deployment | Docker, Docker Compose, GitHub Actions, EC2 guide |
 | Main value | Faster support replies grounded in company policy, history, and tool data |
 
+## MEOW Hindsight Memory (Phase 1 Foundation)
+
+Hindsight is being integrated into MEOW as the cognitive experiential memory engine:
+- **Phase 1 Status:** Hindsight is introduced as an isolated, async-safe infrastructure layer with dedicated customer memory banks.
+- **Coexistence:** The existing Mem0 memory store remains fully active for current agent operations during migration.
+- **Documentation:** For architectural details and bank isolation designs, see [docs/hindsight_phase_1.md](docs/hindsight_phase_1.md).
+
+### Quick Startup:
+```bash
+# 1. Start Hindsight memory server:
+docker compose up -d hindsight
+
+# 2. Run backend API (FastAPI):
+uv run python main.py
+
+# 3. Run frontend dashboard (Streamlit):
+uv run python -m streamlit run app.py
+```
+
+
 ## What Problem This Solves
 
 Support teams face three repeated production problems:
