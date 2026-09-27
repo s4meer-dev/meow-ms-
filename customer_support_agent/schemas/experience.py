@@ -261,7 +261,9 @@ class HindsightEvidence(BaseModel):
 
         # Determine category based on tags, metadata, and causal markers
         category = MemoryCategory.OTHER
-        if (
+        if "[failed" in text_lower or "[failure" in text_lower:
+            category = MemoryCategory.FAILURE
+        elif (
             "[success" in text_lower
             or meta.get("is_resolved") in (True, "true", "True")
             or "resolved" in tags
@@ -269,9 +271,7 @@ class HindsightEvidence(BaseModel):
         ):
             category = MemoryCategory.SUCCESS
         elif (
-            "[failed" in text_lower
-            or "[failure" in text_lower
-            or meta.get("has_failed_attempts") in (True, "true", "True")
+            meta.get("has_failed_attempts") in (True, "true", "True")
             or "has_failures" in tags
             or "failure" in tags
         ):

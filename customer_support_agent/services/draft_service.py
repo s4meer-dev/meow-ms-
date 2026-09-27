@@ -21,7 +21,7 @@ class DraftService:
             except json.JSONDecodeError:
                 context_data = {"raw": context_raw}
 
-        return {
+        res: dict[str, Any] = {
             "id": draft["id"],
             "ticket_id": draft["ticket_id"],
             "content": draft["content"],
@@ -29,6 +29,9 @@ class DraftService:
             "status": draft["status"],
             "created_at": draft["created_at"],
         }
+        if "learning_feedback" in draft:
+            res["learning_feedback"] = draft["learning_feedback"]
+        return res
     
     def serialize_ticket(self, ticket: dict[str, Any]) -> dict[str, Any]:
         return {

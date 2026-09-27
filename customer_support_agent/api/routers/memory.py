@@ -9,7 +9,11 @@ from customer_support_agent.api.dependencies import (
     get_customers_repository,
 )
 from customer_support_agent.repositories.sqlite.customers import CustomersRepository
-from customer_support_agent.schemas.api import CustomerMemoriesResponse, CustomerMemorySearchResponse
+from customer_support_agent.schemas.api import (
+    CustomerMemoriesResponse,
+    CustomerMemorySearchResponse,
+    CustomerTimelineResponse,
+)
 from customer_support_agent.services.copilot_service import SupportCopilot
 
 router = APIRouter()
@@ -69,3 +73,29 @@ def customer_memory_search_route(
         "query": query,
         "results": results,
     }
+
+
+@router.get("/api/customers/{customer_id}/timeline", response_model=CustomerTimelineResponse)
+def customer_timeline_route(
+    customer_id: int,
+    customers_repo: CustomersRepository = Depends(get_customers_repository),
+    copilot: SupportCopilot = Depends(get_copilot_or_503),
+) -> dict:
+    customer = customers_repo.get_by_id(customer_id)
+    if not customer:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    try:
+        timeline = copilot.get_customer_timeline(
+            customer_email=customer["email"],
+            customer_company=customer.get("company"),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to load customer timeline: {exc}") from exc
+
+    return {
+        "customer_id": customer_id,
+        "customer_email": customer["email"],
+        "timeline": timeline,
+    }
+

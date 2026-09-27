@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from customer_support_agent.api.dependencies import (
@@ -44,13 +46,14 @@ def update_draft_route(
     if not updated:
         raise HTTPException(status_code=500, detail="Failed to update draft")
 
+    learning_feedback = None
     if payload.status == "accepted":
         relation = drafts_repo.get_ticket_and_customer_by_draft(draft_id)
         if relation:
             tickets_repo.set_status(relation["ticket_id"], "resolved")
             try:
                 context_used = draft_service.parse_context_used(updated.get("context_used"))
-                get_copilot().save_accepted_resolution(
+                learning_feedback = get_copilot().save_accepted_resolution(
                     customer_email=relation["customer_email"],
                     customer_company=relation.get("customer_company"),
                     ticket_subject=relation["subject"],
@@ -59,8 +62,36 @@ def update_draft_route(
                     context_used=context_used,
                     ticket_id=relation["ticket_id"],
                 )
-            except Exception:
+            except Exception as exc:
                 # Draft acceptance should still succeed even if memory save fails.
-                pass
+                learning_feedback = {
+                    "mem0_saved": False,
+                    "hindsight_saved": False,
+                    "hindsight_error": str(exc),
+                }
+    elif payload.status in ("discarded", "rejected"):
+        relation = drafts_repo.get_ticket_and_customer_by_draft(draft_id)
+        if relation:
+            try:
+                context_used = draft_service.parse_context_used(updated.get("context_used"))
+                learning_feedback = get_copilot().save_rejected_resolution(
+                    customer_email=relation["customer_email"],
+                    customer_company=relation.get("customer_company"),
+                    ticket_subject=relation["subject"],
+                    ticket_description=relation["description"],
+                    draft_content=updated["content"],
+                    context_used=context_used,
+                    ticket_id=relation["ticket_id"],
+                    rejection_reason=payload.rejection_reason,
+                )
+            except Exception as exc:
+                # Draft rejection should still succeed even if memory save fails.
+                learning_feedback = {
+                    "hindsight_saved": False,
+                    "hindsight_error": str(exc),
+                }
+
+    if isinstance(learning_feedback, dict):
+        updated["learning_feedback"] = learning_feedback
 
     return draft_service.serialize_draft(updated)

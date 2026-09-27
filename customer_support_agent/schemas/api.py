@@ -75,10 +75,12 @@ class DraftResponse(BaseModel):
     context_used: StructuredDraftContext | dict[str, Any] | None = None
     status: str
     created_at: str
+    learning_feedback: dict[str, Any] | None = None
 
 class DraftUpdateRequest(BaseModel):
     content: str | None = None
-    status: Literal["pending", "accepted", "discarded"] | None = None
+    status: Literal["pending", "accepted", "discarded", "rejected"] | None = None
+    rejection_reason: str | None = None
 
 class GenerateDraftResponse(BaseModel):
     ticket_id: int
@@ -106,3 +108,8 @@ class CustomerMemorySearchResponse(BaseModel):
     customer_email: EmailStr
     query: str
     results: list[dict[str, Any]]
+
+class CustomerTimelineResponse(BaseModel):
+    customer_id: int
+    customer_email: EmailStr
+    timeline: list[dict[str, Any]]
