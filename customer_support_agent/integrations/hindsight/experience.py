@@ -14,7 +14,12 @@ from customer_support_agent.schemas.experience import (
     ExperienceRecallItem,
     ExperienceRecallResponse,
     ExperienceReflectionResponse,
+    HindsightEvidence,
+    MemoryCategory,
+    MemoryEvaluation,
     SupportExperience,
+    build_hindsight_recall_query,
+    evaluate_memory_overlap,
 )
 
 logger = logging.getLogger(__name__)
@@ -326,6 +331,79 @@ class ExperienceMemoryService:
             experiences=raw_items,
             raw_response=raw_obj,
         )
+
+    def recall_customer_evidence(
+        self,
+        customer_id: str | int,
+        query: str,
+        max_tokens: int = 4096,
+        budget: str = "mid",
+        tags: Optional[list[str]] = None,
+    ) -> list[HindsightEvidence]:
+        """
+        Recalls and classifies structured HindsightEvidence items for a customer.
+        Safe for use inside synchronous execution paths.
+        """
+        resp = self.recall_relevant_experiences(
+            customer_id=customer_id,
+            query=query,
+            max_tokens=max_tokens,
+            budget=budget,
+            tags=tags,
+        )
+        evidence_list: list[HindsightEvidence] = []
+        for item in resp.experiences:
+            ev = HindsightEvidence.from_raw_item(
+                text=item.text,
+                score=item.score,
+                metadata=item.metadata,
+            )
+            evidence_list.append(ev)
+
+        if resp.summary_text and not evidence_list:
+            evidence_list.append(
+                HindsightEvidence.from_raw_item(
+                    text=resp.summary_text,
+                    metadata={"source": "hindsight_summary"},
+                )
+            )
+        return evidence_list
+
+    async def arecall_customer_evidence(
+        self,
+        customer_id: str | int,
+        query: str,
+        max_tokens: int = 4096,
+        budget: str = "mid",
+        tags: Optional[list[str]] = None,
+    ) -> list[HindsightEvidence]:
+        """
+        Asynchronously recalls and classifies structured HindsightEvidence items for a customer.
+        """
+        resp = await self.arecall_relevant_experiences(
+            customer_id=customer_id,
+            query=query,
+            max_tokens=max_tokens,
+            budget=budget,
+            tags=tags,
+        )
+        evidence_list: list[HindsightEvidence] = []
+        for item in resp.experiences:
+            ev = HindsightEvidence.from_raw_item(
+                text=item.text,
+                score=item.score,
+                metadata=item.metadata,
+            )
+            evidence_list.append(ev)
+
+        if resp.summary_text and not evidence_list:
+            evidence_list.append(
+                HindsightEvidence.from_raw_item(
+                    text=resp.summary_text,
+                    metadata={"source": "hindsight_summary"},
+                )
+            )
+        return evidence_list
 
     async def areflect_on_customer_experience(
         self,

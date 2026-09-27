@@ -116,30 +116,70 @@ def render_context(context: dict[str, Any] | None) -> None:
 
     signals = context.get("signals") or {}
     memory_hits = context.get("memory_hits") or []
+    hindsight_hits = context.get("hindsight_hits") or []
     knowledge_hits = context.get("knowledge_hits") or []
     tool_calls = context.get("tool_calls") or []
     highlights = context.get("highlights") or {}
+    mem_eval = context.get("memory_evaluation")
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Memory Hits", signals.get("memory_hit_count", len(memory_hits)))
-    c2.metric("KB Hits", signals.get("knowledge_hit_count", len(knowledge_hits)))
-    c3.metric("Tool Calls", signals.get("tool_call_count", len(tool_calls)))
-    c4.metric(
-        "Tool Errors",
-        signals.get(
-            "tool_error_count",
-            len([call for call in tool_calls if call.get("status") != "ok"]),
-        ),
-    )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Mem0 Hits", signals.get("memory_hit_count", len(memory_hits)))
+    c2.metric("Hindsight Hits", signals.get("hindsight_hit_count", len(hindsight_hits)))
+    c3.metric("KB Hits", signals.get("knowledge_hit_count", len(knowledge_hits)))
+    c4.metric("Tool Calls", signals.get("tool_call_count", len(tool_calls)))
+    c5.metric("Overlap", signals.get("memory_overlap_count", len(mem_eval.get("common_facts", [])) if mem_eval else 0))
 
     sources = signals.get("knowledge_sources") or []
     if sources:
         st.caption(f"Knowledge sources: {', '.join(sources)}")
 
-    if any(highlights.get(key) for key in ("memory", "knowledge", "tools")):
+    # MEOW Phase 3: Memory Intelligence Section
+    st.markdown("#### 🧠 MEOW Memory Intelligence (Shadow Evaluation)")
+    shadow_mode = context.get("shadow_mode", True)
+    injected = context.get("hindsight_context_injected", False)
+    if shadow_mode:
+        st.info("🛰️ **Shadow Mode Active**: Hindsight experience memories are recalled and evaluated in shadow mode. They do not alter production answers.")
+    if injected:
+        st.caption("ℹ️ Hindsight context injection is enabled for this draft.")
+
+    col_m, col_h = st.columns(2)
+    with col_m:
+        st.markdown("**Mem0 Production Memory**")
+        if not memory_hits:
+            st.caption("No Mem0 memories recalled.")
+        for item in memory_hits[:5]:
+            mem_text = item.get("memory", "")
+            st.markdown(f"- {mem_text}")
+    with col_h:
+        st.markdown("**Hindsight Experience Memory**")
+        if not hindsight_hits:
+            st.caption("No Hindsight memories recalled.")
+        for h in hindsight_hits[:5]:
+            cat = h.get("category", "OTHER")
+            text = h.get("text", "")
+            st.markdown(f"- `{cat}` {text}")
+
+    if mem_eval:
+        st.markdown("**Memory Overlap Analysis**")
+        col_c, col_mo, col_ho = st.columns(3)
+        with col_c:
+            st.metric("Common Facts", len(mem_eval.get("common_facts", [])))
+            for f in mem_eval.get("common_facts", [])[:3]:
+                st.caption(f"• {f}")
+        with col_mo:
+            st.metric("Mem0 Only", len(mem_eval.get("mem0_only_facts", [])))
+            for f in mem_eval.get("mem0_only_facts", [])[:3]:
+                st.caption(f"• {f}")
+        with col_ho:
+            st.metric("Hindsight Only", len(mem_eval.get("hindsight_only_facts", [])))
+            for f in mem_eval.get("hindsight_only_facts", [])[:3]:
+                st.caption(f"• {f}")
+
+    if any(highlights.get(key) for key in ("memory", "knowledge", "tools", "hindsight")):
         st.markdown("**Highlights**")
         for label, key in (
-            ("Memory", "memory"),
+            ("Mem0 Memory", "memory"),
+            ("Hindsight Experience", "hindsight"),
             ("Knowledge", "knowledge"),
             ("Tools", "tools"),
         ):
@@ -177,8 +217,13 @@ def render_context(context: dict[str, Any] | None) -> None:
                     st.caption("Raw Output")
                     st.code(call.get("output_text", ""), language="text")
 
-    with st.expander("Detailed Memory Hits"):
+    with st.expander("Detailed Mem0 Hits"):
         st.json(memory_hits)
+    with st.expander("Detailed Hindsight Hits"):
+        st.json(hindsight_hits)
+    if mem_eval:
+        with st.expander("Detailed Memory Evaluation"):
+            st.json(mem_eval)
     with st.expander("Detailed Knowledge Hits"):
         st.json(knowledge_hits)
 

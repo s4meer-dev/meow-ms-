@@ -17,8 +17,13 @@ from customer_support_agent.schemas.experience import (
     ExperienceRecallItem,
     ExperienceRecallResponse,
     ExperienceReflectionResponse,
+    HindsightEvidence,
+    MemoryCategory,
+    MemoryEvaluation,
     SupportExperience,
     TroubleshootingAttempt,
+    build_hindsight_recall_query,
+    evaluate_memory_overlap,
 )
 
 
@@ -41,4 +46,9 @@ __all__ = [
     "ExperienceRecallItem",
     "ExperienceRecallResponse",
     "ExperienceReflectionResponse",
+    "MemoryCategory",
+    "HindsightEvidence",
+    "MemoryEvaluation",
+    "build_hindsight_recall_query",
+    "evaluate_memory_overlap",
 ]

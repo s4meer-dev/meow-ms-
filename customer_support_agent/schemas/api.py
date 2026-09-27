@@ -33,12 +33,15 @@ class DraftSignals(BaseModel):
     tool_call_count: int = 0
     tool_error_count: int = 0
     knowledge_sources: list[str] = Field(default_factory=list)
+    hindsight_hit_count: int = 0
+    memory_overlap_count: int = 0
 
 
 class DraftHighlights(BaseModel):
     memory: list[str] = Field(default_factory=list)
     knowledge: list[str] = Field(default_factory=list)
     tools: list[str] = Field(default_factory=list)
+    hindsight: list[str] = Field(default_factory=list)
 
 
 class DraftToolCall(BaseModel):
@@ -59,6 +62,10 @@ class StructuredDraftContext(BaseModel):
     memory_hits: list[dict[str, Any]] = Field(default_factory=list)
     knowledge_hits: list[dict[str, Any]] = Field(default_factory=list)
     tool_calls: list[DraftToolCall | dict[str, Any]] = Field(default_factory=list)
+    hindsight_hits: list[dict[str, Any]] = Field(default_factory=list)
+    memory_evaluation: dict[str, Any] | None = None
+    shadow_mode: bool = True
+    hindsight_context_injected: bool = False
     errors: list[str] = Field(default_factory=list)
 
 class DraftResponse(BaseModel):

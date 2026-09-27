@@ -57,6 +57,7 @@ def update_draft_route(
                     ticket_description=relation["description"],
                     draft_content=updated["content"],
                     context_used=context_used,
+                    ticket_id=relation["ticket_id"],
                 )
             except Exception:
                 # Draft acceptance should still succeed even if memory save fails.

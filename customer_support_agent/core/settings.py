@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -43,11 +44,35 @@ class Settings(BaseSettings):
 
     dashboard_api_url: str = "http://localhost:8000"
 
-    # Hindsight Memory Service Configuration
-    hindsight_api_url: str = "http://localhost:8888"
-    hindsight_api_key: str = ""
-    hindsight_enabled: bool = False
-    hindsight_timeout: float = 30.0
+    # Hindsight Memory Service Configuration & Phase 3 Feature Flags
+    hindsight_api_url: str = Field(
+        default="http://localhost:8888",
+        validation_alias=AliasChoices("hindsight_api_url", "HINDSIGHT_API_URL"),
+    )
+    hindsight_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("hindsight_api_key", "HINDSIGHT_API_KEY"),
+    )
+    hindsight_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("hindsight_enabled", "HINDSIGHT_ENABLED"),
+    )
+    hindsight_timeout: float = Field(
+        default=30.0,
+        validation_alias=AliasChoices("hindsight_timeout", "HINDSIGHT_TIMEOUT"),
+    )
+    meow_hindsight_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("meow_hindsight_enabled", "MEOW_HINDSIGHT_ENABLED"),
+    )
+    meow_hindsight_shadow_mode: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("meow_hindsight_shadow_mode", "MEOW_HINDSIGHT_SHADOW_MODE"),
+    )
+    meow_hindsight_context_injection: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("meow_hindsight_context_injection", "MEOW_HINDSIGHT_CONTEXT_INJECTION"),
+    )
 
     def resolve(self, path: Path) -> Path:
         """Resolve relative paths against the project root."""
