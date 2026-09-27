@@ -11,14 +11,15 @@ services:
       - HINDSIGHT_API_LLM_API_KEY=${GROQ_API_KEY:-}
       - HINDSIGHT_API_LLM_MODEL=${HINDSIGHT_API_LLM_MODEL:-openai/gpt-oss-20b}
       - HINDSIGHT_API_LLM_GROQ_SERVICE_TIER=${HINDSIGHT_API_LLM_GROQ_SERVICE_TIER:-on_demand}
-      - HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS=${HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS:-4096}
+      - HINDSIGHT_API_RETAIN_CHUNK_SIZE=1000
+      - HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS=${HINDSIGHT_API_RETAIN_MAX_COMPLETION_TOKENS:-2048}
       - HINDSIGHT_API_REFLECT_MAX_COMPLETION_TOKENS=${HINDSIGHT_API_REFLECT_MAX_COMPLETION_TOKENS:-2048}
       - HINDSIGHT_API_WORKER_ID=meow-hindsight-worker
     volumes:
       - hindsight-data:/home/hindsight/.pg0
       - ./docker/patches/openai_compatible_llm.py:/app/api/hindsight_api/engine/providers/openai_compatible_llm.py:ro
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8888/health || exit 1"]
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8888/health')\" || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 30

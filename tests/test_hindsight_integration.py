@@ -79,64 +79,73 @@ async def test_live_hindsight_retain_recall_reflect_and_isolation(hindsight_serv
     bank_a = get_customer_bank_id("live_test_customer_a")
     bank_b = get_customer_bank_id("live_test_customer_b")
 
-    # Retain synthetic experience for Customer A
-    content_a = (
-        "Customer test-001 experienced API request timeouts in production while generating large reports. "
-        "Clearing the cache did not resolve the problem. "
-        "Increasing the API request timeout from 30 seconds to 90 seconds resolved the issue."
-    )
-    retain_a = await hindsight_service.aretain(
-        bank_id=bank_a,
-        content=content_a,
-        context="API timeout incident report",
-        tags=["timeout", "api", "resolved"],
-    )
-    assert retain_a["status"] == "ok"
+    def _handle_quota_error(exc: Exception):
+        exc_str = str(exc).lower()
+        if any(term in exc_str for term in ["provider quota exhausted", "rate limit reached", "tokens per day", "ratelimitreset", "providerratelimitreseterror", "rate_limit_exceeded"]):
+            pytest.skip(f"Live Hindsight test skipped due to upstream Groq daily token limit (TPD): {exc}")
+        raise exc
 
-    # Allow token bucket breathing room between sequential retains on free provider tier
-    await asyncio.sleep(6)
+    try:
+        # Retain synthetic experience for Customer A
+        content_a = (
+            "Customer test-001 experienced API request timeouts in production while generating large reports. "
+            "Clearing the cache did not resolve the problem. "
+            "Increasing the API request timeout from 30 seconds to 90 seconds resolved the issue."
+        )
+        retain_a = await hindsight_service.aretain(
+            bank_id=bank_a,
+            content=content_a,
+            context="API timeout incident report",
+            tags=["timeout", "api", "resolved"],
+        )
+        assert retain_a["status"] == "ok"
 
-    # Retain synthetic experience for Customer B
-    content_b = (
-        "Customer test-002 encountered an authentication 401 error. "
-        "Rotating the client secret and re-authorizing resolved the authentication failure."
-    )
-    retain_b = await hindsight_service.aretain(
-        bank_id=bank_b,
-        content=content_b,
-        context="Auth failure incident report",
-        tags=["auth", "401", "resolved"],
-    )
-    assert retain_b["status"] == "ok"
+        # Allow token bucket breathing room between sequential retains on free provider tier
+        await asyncio.sleep(6)
 
-    # Recall Customer A memory
-    recall_a = await hindsight_service.arecall(
-        bank_id=bank_a,
-        query="What previously resolved the API timeout for generating large reports?",
-    )
-    assert recall_a["status"] == "ok"
-    recalled_text_a = recall_a.get("text", "") + " " + " ".join(r.get("text", "") for r in recall_a.get("results", []))
-    recalled_lower_a = recalled_text_a.lower()
+        # Retain synthetic experience for Customer B
+        content_b = (
+            "Customer test-002 encountered an authentication 401 error. "
+            "Rotating the client secret and re-authorizing resolved the authentication failure."
+        )
+        retain_b = await hindsight_service.aretain(
+            bank_id=bank_b,
+            content=content_b,
+            context="Auth failure incident report",
+            tags=["auth", "401", "resolved"],
+        )
+        assert retain_b["status"] == "ok"
 
-    # Verify semantic concepts in recall
-    assert any(term in recalled_lower_a for term in ["timeout", "90", "seconds", "report"])
+        # Recall Customer A memory
+        recall_a = await hindsight_service.arecall(
+            bank_id=bank_a,
+            query="What previously resolved the API timeout for generating large reports?",
+        )
+        assert recall_a["status"] == "ok"
+        recalled_text_a = recall_a.get("text", "") + " " + " ".join(r.get("text", "") for r in recall_a.get("results", []))
+        recalled_lower_a = recalled_text_a.lower()
 
-    # Verify Bank Isolation: Customer B bank recall must NOT return Customer A timeout content
-    recall_b = await hindsight_service.arecall(
-        bank_id=bank_b,
-        query="What previously resolved the API timeout?",
-    )
-    recalled_text_b = recall_b.get("text", "") + " " + " ".join(r.get("text", "") for r in recall_b.get("results", []))
-    assert "90 seconds" not in recalled_text_b
+        # Verify semantic concepts in recall
+        assert any(term in recalled_lower_a for term in ["timeout", "90", "seconds", "report"])
 
-    # Allow token bucket breathing room on free provider tier before multi-turn reflect
-    await asyncio.sleep(12)
+        # Verify Bank Isolation: Customer B bank recall must NOT return Customer A timeout content
+        recall_b = await hindsight_service.arecall(
+            bank_id=bank_b,
+            query="What previously resolved the API timeout?",
+        )
+        recalled_text_b = recall_b.get("text", "") + " " + " ".join(r.get("text", "") for r in recall_b.get("results", []))
+        assert "90 seconds" not in recalled_text_b
 
-    # Reflect on Customer A's bank
-    reflect_a = await hindsight_service.areflect(
-        bank_id=bank_a,
-        query="What should a support agent know if this customer reports another API timeout?",
-    )
-    assert reflect_a["status"] == "ok"
-    response_lower = reflect_a.get("response", "").lower()
-    assert any(term in response_lower for term in ["timeout", "cache", "90", "report", "increase"])
+        # Allow token bucket breathing room on free provider tier before multi-turn reflect
+        await asyncio.sleep(12)
+
+        # Reflect on Customer A's bank
+        reflect_a = await hindsight_service.areflect(
+            bank_id=bank_a,
+            query="What should a support agent know if this customer reports another API timeout?",
+        )
+        assert reflect_a["status"] == "ok"
+        response_lower = reflect_a.get("response", "").lower()
+        assert any(term in response_lower for term in ["timeout", "cache", "90", "report", "increase"])
+    except Exception as exc:
+        _handle_quota_error(exc)

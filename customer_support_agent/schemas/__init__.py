@@ -13,6 +13,13 @@ from customer_support_agent.schemas.api import (
     TicketCreateRequest,
     TicketResponse,
 )
+from customer_support_agent.schemas.experience import (
+    ExperienceRecallItem,
+    ExperienceRecallResponse,
+    ExperienceReflectionResponse,
+    SupportExperience,
+    TroubleshootingAttempt,
+)
 
 
 __all__ = [
@@ -29,4 +36,9 @@ __all__ = [
     "KnowledgeIngestResponse",
     "CustomerMemoriesResponse",
     "CustomerMemorySearchResponse",
+    "TroubleshootingAttempt",
+    "SupportExperience",
+    "ExperienceRecallItem",
+    "ExperienceRecallResponse",
+    "ExperienceReflectionResponse",
 ]

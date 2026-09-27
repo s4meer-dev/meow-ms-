@@ -268,6 +268,7 @@ class HindsightMemoryService:
         context: Optional[str] = None,
         metadata: Optional[dict[str, str]] = None,
         tags: Optional[list[str]] = None,
+        document_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """Synchronous retain wrapper."""
         if not bank_id or not bank_id.strip():
@@ -281,6 +282,7 @@ class HindsightMemoryService:
                 context=context,
                 metadata=metadata,
                 tags=tags,
+                document_id=document_id,
             )
             return {"status": "ok", "bank_id": bank_id, "response": resp}
         except Exception as exc:

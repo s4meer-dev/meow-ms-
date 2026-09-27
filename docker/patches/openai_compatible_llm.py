@@ -729,7 +729,8 @@ def _raise_provider_quota_defer(
     retry_at = _rate_limit_retry_at(e)
     if retry_at is None:
         return
-    if (retry_at - datetime.now(UTC)).total_seconds() <= max_backoff:
+    effective_max = max(max_backoff, 90.0)
+    if (retry_at - datetime.now(UTC)).total_seconds() <= effective_max:
         return
     summary = _summarize_status_error(e)
     raise ProviderRateLimitResetError(
@@ -1169,6 +1170,8 @@ class OpenAICompatibleLLM(LLMInterface):
         is_reasoning_model = self._supports_reasoning_model()
 
         # Apply model-specific token limits
+        if self.provider == "groq":
+            max_completion_tokens = min(max_completion_tokens or 1024, 1024)
         if max_completion_tokens is not None:
             max_tokens_cap = self._get_max_reasoning_tokens()
             if max_tokens_cap and max_completion_tokens > max_tokens_cap:
@@ -1501,9 +1504,14 @@ class OpenAICompatibleLLM(LLMInterface):
                         f"APIStatusError ({self.provider}/{self.model}, scope={scope}, "
                         f"attempt {attempt + 1}/{max_retries + 1}): {_summarize_status_error(e)}"
                     )
-                    backoff = min(initial_backoff * (2**attempt), max_backoff)
-                    jitter = backoff * 0.2 * (2 * (time.time() % 1) - 1)
-                    sleep_time = backoff + jitter
+                    retry_at = _rate_limit_retry_at(e) if e.status_code == 429 else None
+                    if retry_at is not None:
+                        wait_s = max((retry_at - datetime.now(UTC)).total_seconds() + 2.0, 5.0)
+                        sleep_time = min(wait_s, 60.0)
+                    else:
+                        backoff = min(initial_backoff * (2**attempt), max_backoff)
+                        jitter = backoff * 0.2 * (2 * (time.time() % 1) - 1)
+                        sleep_time = backoff + jitter
                     await asyncio.sleep(sleep_time)
                 else:
                     logger.error(
@@ -1632,8 +1640,8 @@ class OpenAICompatibleLLM(LLMInterface):
         if request_tool_choice is not None:
             call_params["tool_choice"] = request_tool_choice
 
-        if max_completion_tokens is None and self.provider == "groq":
-            max_completion_tokens = 2048
+        if self.provider == "groq":
+            max_completion_tokens = min(max_completion_tokens or 1024, 1024)
         if max_completion_tokens is not None:
             call_params[self._max_tokens_param_name()] = max_completion_tokens
         if temperature is not None and not self._supports_reasoning_model():
@@ -1824,7 +1832,13 @@ class OpenAICompatibleLLM(LLMInterface):
                         f"APIStatusError in tool call ({self.provider}/{self.model}, scope={scope}, "
                         f"attempt {attempt + 1}/{max_retries + 1}): {_summarize_status_error(e)}"
                     )
-                    await asyncio.sleep(min(initial_backoff * (2**attempt), max_backoff))
+                    retry_at = _rate_limit_retry_at(e) if e.status_code == 429 else None
+                    if retry_at is not None:
+                        wait_s = max((retry_at - datetime.now(UTC)).total_seconds() + 2.0, 5.0)
+                        sleep_time = min(wait_s, 60.0)
+                    else:
+                        sleep_time = min(initial_backoff * (2**attempt), max_backoff)
+                    await asyncio.sleep(sleep_time)
                     continue
                 logger.error(
                     f"API error in tool call after {max_retries + 1} attempts "
