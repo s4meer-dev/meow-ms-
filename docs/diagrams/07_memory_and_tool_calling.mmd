@@ -1,0 +1,20 @@
+flowchart TD
+    Ticket["New Support Ticket"] --> Query["Subject + Description Query"]
+
+    Query --> CustomerScope["Customer Memory Scope: email"]
+    Query --> CompanyScope["Company Memory Scope: company slug"]
+    CustomerScope --> MemoryHits["Relevant Memory Hits"]
+    CompanyScope --> MemoryHits
+
+    Query --> Agent["LangChain Agent"]
+    Agent --> NeedData{"Need Structured Data?"}
+    NeedData -->|Plan or SLA| PlanTool["lookup_customer_plan"]
+    NeedData -->|Ticket load| LoadTool["lookup_open_ticket_load"]
+    NeedData -->|No| Draft["Generate Draft"]
+
+    PlanTool --> ToolResult["Structured JSON Tool Result"]
+    LoadTool --> ToolResult
+    ToolResult --> Agent
+    MemoryHits --> PromptContext["Prompt Context"]
+    Agent --> PromptContext
+    PromptContext --> Draft

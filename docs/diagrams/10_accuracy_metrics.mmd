@@ -1,0 +1,14 @@
+flowchart LR
+    Accuracy["System Accuracy"] --> Retrieval["RAG Retrieval Accuracy"]
+    Accuracy --> Grounding["Answer Faithfulness"]
+    Accuracy --> Tool["Tool Call Accuracy"]
+    Accuracy --> Memory["Memory Relevance"]
+    Accuracy --> Draft["Human Draft Acceptance"]
+    Accuracy --> Safety["Safety and PII Compliance"]
+
+    Retrieval --> R1["Correct policy chunks retrieved"]
+    Grounding --> G1["Draft claims supported by context"]
+    Tool --> T1["Correct tool and arguments"]
+    Memory --> M1["Useful customer/company history"]
+    Draft --> D1["Low edit distance before acceptance"]
+    Safety --> S1["No sensitive data leaks"]

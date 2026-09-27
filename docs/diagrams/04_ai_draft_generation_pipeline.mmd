@@ -1,0 +1,25 @@
+flowchart TD
+    Ticket["Ticket Subject + Description"] --> Query["Build Retrieval Query"]
+    Query --> CustomerMemory["Search Customer Memory"]
+    Query --> CompanyMemory["Search Company Memory"]
+    Query --> KnowledgeBase["Search Knowledge Base"]
+
+    CustomerMemory --> Context["Context Builder"]
+    CompanyMemory --> Context
+    KnowledgeBase --> Context
+
+    Context --> Prompt["System Prompt + User Prompt"]
+    Prompt --> Agent["LangChain Agent"]
+    Agent --> Decision{"Need Tool?"}
+    Decision -->|Yes| Tool["Call Support Tool"]
+    Tool --> Agent
+    Decision -->|No| Generate["Generate Draft"]
+    Agent --> Generate
+
+    Generate --> Empty{"Draft Empty?"}
+    Empty -->|No| Save["Save Draft + Context"]
+    Empty -->|Yes| FallbackLLM["Fallback LLM Synthesis"]
+    FallbackLLM --> StillEmpty{"Still Empty?"}
+    StillEmpty -->|No| Save
+    StillEmpty -->|Yes| Template["Deterministic Template"]
+    Template --> Save

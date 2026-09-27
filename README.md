@@ -55,7 +55,32 @@ This project solves those problems by building a support copilot that:
 - Run locally with Docker Compose.
 - Deploy simply to EC2 with GitHub Actions.
 
+## Downloadable Mermaid Diagrams
+
+All architecture diagrams are also available as standalone Mermaid source files in `docs/diagrams/`. You can open, download, edit, or export them as SVG/PNG/PDF using Mermaid Live Editor, VS Code Mermaid Preview, or Mermaid CLI.
+
+| Diagram | Download Mermaid Source |
+|---|---|
+| High-level architecture | [01_high_level_architecture.mmd](docs/diagrams/01_high_level_architecture.mmd) |
+| Complete request flow | [02_complete_request_flow.mmd](docs/diagrams/02_complete_request_flow.mmd) |
+| Code/module flow | [03_code_flow.mmd](docs/diagrams/03_code_flow.mmd) |
+| AI draft generation pipeline | [04_ai_draft_generation_pipeline.mmd](docs/diagrams/04_ai_draft_generation_pipeline.mmd) |
+| Knowledge base ingestion | [05_knowledge_base_ingestion.mmd](docs/diagrams/05_knowledge_base_ingestion.mmd) |
+| Data model | [06_data_model.mmd](docs/diagrams/06_data_model.mmd) |
+| Memory and tool calling | [07_memory_and_tool_calling.mmd](docs/diagrams/07_memory_and_tool_calling.mmd) |
+| Production architecture | [08_production_architecture.mmd](docs/diagrams/08_production_architecture.mmd) |
+| Docker deployment flow | [09_deployment_flow.mmd](docs/diagrams/09_deployment_flow.mmd) |
+| Accuracy metrics map | [10_accuracy_metrics.mmd](docs/diagrams/10_accuracy_metrics.mmd) |
+
+Export example:
+
+```bash
+npx @mermaid-js/mermaid-cli -i docs/diagrams/01_high_level_architecture.mmd -o architecture.svg
+```
+
 ## High-Level Architecture
+
+[Download Mermaid source](docs/diagrams/01_high_level_architecture.mmd)
 
 ```mermaid
 flowchart TD
@@ -89,6 +114,8 @@ flowchart TD
 ```
 
 ## Complete Request Flow
+
+[Download Mermaid source](docs/diagrams/02_complete_request_flow.mmd)
 
 ```mermaid
 sequenceDiagram
@@ -126,6 +153,8 @@ sequenceDiagram
 
 ## Code Flow
 
+[Download Mermaid source](docs/diagrams/03_code_flow.mmd)
+
 ```mermaid
 flowchart LR
     main[main.py] --> factory[api/app_factory.py]
@@ -156,6 +185,8 @@ flowchart LR
 ```
 
 ## Data Model
+
+[Download Mermaid source](docs/diagrams/06_data_model.mmd)
 
 ```mermaid
 erDiagram
@@ -192,6 +223,8 @@ erDiagram
 ```
 
 ## AI Draft Generation Pipeline
+
+[Download Mermaid source](docs/diagrams/04_ai_draft_generation_pipeline.mmd)
 
 ```mermaid
 flowchart TD
@@ -231,6 +264,8 @@ The project stores banking support documents in `knowledge_base/`:
 - `banking-atm-cash-withdrawal-faq.md`
 
 The ingestion pipeline:
+
+[Download Mermaid source](docs/diagrams/05_knowledge_base_ingestion.mmd)
 
 ```mermaid
 flowchart LR
@@ -389,6 +424,8 @@ Current deployment support:
 - EC2 deployment documentation in `docs/EC2_deployment_flow.md`.
 
 Recommended production upgrade:
+
+[Download Mermaid source](docs/diagrams/08_production_architecture.mmd)
 
 ```mermaid
 flowchart TD

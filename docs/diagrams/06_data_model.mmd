@@ -1,0 +1,31 @@
+erDiagram
+    CUSTOMERS ||--o{ TICKETS : creates
+    TICKETS ||--o{ DRAFTS : has
+
+    CUSTOMERS {
+        int id PK
+        string email UK
+        string name
+        string company
+        timestamp created_at
+    }
+
+    TICKETS {
+        int id PK
+        int customer_id FK
+        string subject
+        string description
+        string status
+        string priority
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    DRAFTS {
+        int id PK
+        int ticket_id FK
+        text content
+        text context_used
+        string status
+        timestamp created_at
+    }

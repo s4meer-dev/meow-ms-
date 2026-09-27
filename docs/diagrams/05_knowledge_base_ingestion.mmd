@@ -1,0 +1,6 @@
+flowchart LR
+    Docs["Markdown and Text Files"] --> Split["Recursive Text Splitter"]
+    Split --> Chunks["Policy Chunks"]
+    Chunks --> Embed["Embedding Function"]
+    Embed --> Chroma["ChromaDB Collection"]
+    Chroma --> Search["Similarity Search at Draft Time"]

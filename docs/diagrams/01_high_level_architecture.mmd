@@ -1,0 +1,28 @@
+flowchart TD
+    Agent["Support Agent"] --> UI["Streamlit Dashboard"]
+    UI --> API["FastAPI Backend"]
+
+    API --> TicketRouter["Ticket Router"]
+    API --> DraftRouter["Draft Router"]
+    API --> KnowledgeRouter["Knowledge Router"]
+    API --> MemoryRouter["Memory Router"]
+
+    TicketRouter --> SQLite[("SQLite Database")]
+    DraftRouter --> SQLite
+
+    TicketRouter --> DraftService["Draft Service"]
+    DraftService --> Copilot["Support Copilot Service"]
+
+    Copilot --> Memory["Customer and Company Memory"]
+    Copilot --> RAG["ChromaDB Knowledge Base"]
+    Copilot --> Tools["Support Tools"]
+    Copilot --> LLM["Groq LLM via LangChain Agent"]
+
+    Memory --> ChromaMem[("Chroma Memory Store")]
+    RAG --> ChromaRag[("Chroma RAG Store")]
+    Tools --> SQLite
+
+    LLM --> Draft["Draft Reply + Context Used"]
+    Draft --> SQLite
+    UI --> Review["Human Review: Edit, Accept, Discard"]
+    Review --> Memory

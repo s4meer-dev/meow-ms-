@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor A as Support Agent
+    participant UI as Streamlit Dashboard
+    participant API as FastAPI
+    participant DB as SQLite
+    participant DS as DraftService
+    participant CP as SupportCopilot
+    participant KB as Chroma RAG
+    participant MEM as Mem0 Memory
+    participant TOOL as Backend Tools
+    participant LLM as Groq LLM
+
+    A->>UI: Create ticket
+    UI->>API: POST /api/tickets
+    API->>DB: Create or get customer
+    API->>DB: Create ticket
+    API->>DS: Start background draft generation
+    DS->>CP: generate_draft(ticket, customer)
+    CP->>MEM: Search customer and company memory
+    CP->>KB: Search relevant policy chunks
+    CP->>TOOL: Lookup plan or open ticket load if needed
+    CP->>LLM: Generate draft with context
+    LLM-->>CP: Draft response
+    CP-->>DS: Draft and context_used
+    DS->>DB: Save draft
+    UI->>API: GET latest draft
+    API-->>UI: Draft and context
+    A->>UI: Edit and accept draft
+    UI->>API: PATCH /api/drafts/{draft_id}
+    API->>DB: Mark draft accepted and ticket resolved
+    API->>MEM: Save accepted resolution as memory

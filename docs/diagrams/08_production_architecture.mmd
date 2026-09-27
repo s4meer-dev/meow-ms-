@@ -1,0 +1,27 @@
+flowchart TD
+    Agents["Support Agents"] --> WAF["WAF + TLS"]
+    WAF --> LB["Load Balancer"]
+    LB --> API1["FastAPI Replica 1"]
+    LB --> API2["FastAPI Replica 2"]
+
+    API1 --> Auth["JWT/OAuth + RBAC"]
+    API2 --> Auth
+    API1 --> Redis[("Redis Cache and Rate Limits")]
+    API2 --> Redis
+    API1 --> Postgres[("Managed PostgreSQL")]
+    API2 --> Postgres
+
+    API1 --> Queue["Background Job Queue"]
+    API2 --> Queue
+    Queue --> Workers["Draft and Ingestion Workers"]
+
+    Workers --> VectorDB[("Managed Vector DB")]
+    Workers --> MemoryStore[("Memory Store")]
+    Workers --> LLMGateway["LLM Gateway"]
+    LLMGateway --> LLMs["Groq / OpenAI / Claude / Gemini"]
+
+    Workers --> ObjectStorage["S3 Document Storage"]
+    API1 --> Observability["Logs, Metrics, Traces"]
+    API2 --> Observability
+    API1 --> Audit[("Audit Logs")]
+    API2 --> Audit

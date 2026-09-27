@@ -1,0 +1,26 @@
+flowchart LR
+    main["main.py"] --> factory["api/app_factory.py"]
+    factory --> routers["API Routers"]
+
+    routers --> tickets["routers/tickets.py"]
+    routers --> drafts["routers/drafts.py"]
+    routers --> knowledge["routers/knowledge.py"]
+    routers --> memory["routers/memory.py"]
+    routers --> health["routers/health.py"]
+
+    tickets --> draft_service["services/draft_service.py"]
+    drafts --> draft_service
+    knowledge --> knowledge_service["services/knowledge_service.py"]
+    memory --> copilot["services/copilot_service.py"]
+
+    draft_service --> copilot
+    copilot --> chroma_kb["integrations/rag/chroma_kb.py"]
+    copilot --> mem0_store["integrations/memory/mem0_store.py"]
+    copilot --> support_tools["integrations/tools/support_tools.py"]
+
+    tickets --> ticket_repo["repositories/sqlite/tickets.py"]
+    drafts --> draft_repo["repositories/sqlite/drafts.py"]
+    tickets --> customer_repo["repositories/sqlite/customers.py"]
+    ticket_repo --> dbbase["repositories/sqlite/base.py"]
+    draft_repo --> dbbase
+    customer_repo --> dbbase

@@ -1,0 +1,8 @@
+flowchart LR
+    Compose["docker compose up"] --> API["API Container: port 8000"]
+    Compose --> UI["Dashboard Container: port 8501"]
+    UI --> API
+    API --> DataVolume["./data mounted volume"]
+    API --> KnowledgeVolume["./knowledge_base mounted volume"]
+    DataVolume --> SQLite[("SQLite + Chroma Data")]
+    KnowledgeVolume --> Docs["Policy Documents"]

@@ -60,7 +60,32 @@ This project solves the problem by grounding draft generation in support policie
 | Deployment | Docker and Docker Compose | Reproducible local and EC2 deployment |
 | CI/CD | GitHub Actions | Test and deploy workflow |
 
+## 5.1 Downloadable Mermaid Diagrams
+
+All major diagrams are available as downloadable Mermaid source files in `docs/diagrams/`. These files can be opened directly, edited for presentations, or exported as SVG/PNG/PDF using Mermaid Live Editor, VS Code Mermaid Preview, or Mermaid CLI.
+
+| Diagram | Download Mermaid Source |
+|---|---|
+| High-level architecture | [01_high_level_architecture.mmd](docs/diagrams/01_high_level_architecture.mmd) |
+| Complete request flow | [02_complete_request_flow.mmd](docs/diagrams/02_complete_request_flow.mmd) |
+| Code/module flow | [03_code_flow.mmd](docs/diagrams/03_code_flow.mmd) |
+| AI draft generation pipeline | [04_ai_draft_generation_pipeline.mmd](docs/diagrams/04_ai_draft_generation_pipeline.mmd) |
+| Knowledge base ingestion | [05_knowledge_base_ingestion.mmd](docs/diagrams/05_knowledge_base_ingestion.mmd) |
+| Data model | [06_data_model.mmd](docs/diagrams/06_data_model.mmd) |
+| Memory and tool calling | [07_memory_and_tool_calling.mmd](docs/diagrams/07_memory_and_tool_calling.mmd) |
+| Production architecture | [08_production_architecture.mmd](docs/diagrams/08_production_architecture.mmd) |
+| Docker deployment flow | [09_deployment_flow.mmd](docs/diagrams/09_deployment_flow.mmd) |
+| Accuracy metrics map | [10_accuracy_metrics.mmd](docs/diagrams/10_accuracy_metrics.mmd) |
+
+Export example:
+
+```bash
+npx @mermaid-js/mermaid-cli -i docs/diagrams/01_high_level_architecture.mmd -o architecture.svg
+```
+
 ## 6. Current Implementation Architecture
+
+[Download Mermaid source](docs/diagrams/01_high_level_architecture.mmd)
 
 ```mermaid
 flowchart TD
@@ -156,6 +181,8 @@ journey
 
 ### 8.1 Ticket Creation With Auto-Draft
 
+[Download Mermaid source](docs/diagrams/02_complete_request_flow.mmd)
+
 ```mermaid
 sequenceDiagram
     actor Agent as Support Agent
@@ -230,6 +257,8 @@ The project contains banking support policy files:
 
 ### 9.2 RAG Ingestion Flow
 
+[Download Mermaid source](docs/diagrams/05_knowledge_base_ingestion.mmd)
+
 ```mermaid
 flowchart TD
     Start[POST /api/knowledge/ingest] --> Service[KnowledgeService.ingest]
@@ -253,6 +282,8 @@ If the ticket says, "Customer says cash was debited but ATM did not dispense mon
 ## 10. Memory Design
 
 The support copilot searches two memory scopes:
+
+[Download Mermaid source](docs/diagrams/07_memory_and_tool_calling.mmd)
 
 ```mermaid
 flowchart LR
@@ -279,6 +310,8 @@ Memory is written only after a draft is accepted. This is important because acce
 ## 11. Tool Calling Design
 
 The copilot exposes two tools:
+
+[Download Mermaid source](docs/diagrams/07_memory_and_tool_calling.mmd)
 
 ```mermaid
 flowchart TD
@@ -346,6 +379,8 @@ This is a good interview point because the model is not given an empty prompt. I
 
 LLM systems can fail. This project includes fallback handling:
 
+[Download Mermaid source](docs/diagrams/04_ai_draft_generation_pipeline.mmd)
+
 ```mermaid
 flowchart TD
     Primary[Primary LangChain Agent Response] --> Empty{Draft content empty?}
@@ -404,6 +439,8 @@ Why this matters in production:
 
 The SQLite database has three main tables:
 
+[Download Mermaid source](docs/diagrams/06_data_model.mmd)
+
 ```mermaid
 erDiagram
     CUSTOMERS ||--o{ TICKETS : owns
@@ -441,6 +478,8 @@ erDiagram
 ## 17. Production-Level Architecture Target
 
 The current implementation is suitable for a portfolio demo and small internal prototype. A production support chatbot should evolve toward the following:
+
+[Download Mermaid source](docs/diagrams/08_production_architecture.mmd)
 
 ```mermaid
 flowchart TD
@@ -569,6 +608,8 @@ For a production system:
 
 The project supports Docker Compose:
 
+[Download Mermaid source](docs/diagrams/09_deployment_flow.mmd)
+
 ```mermaid
 flowchart LR
     Compose[docker compose up] --> API[API Container: port 8000]
@@ -604,6 +645,8 @@ Recommended test expansion:
 ## 21. Accuracy Strategy
 
 For this project, "accuracy" should not mean only LLM answer correctness. It should be measured across layers:
+
+[Download Mermaid source](docs/diagrams/10_accuracy_metrics.mmd)
 
 ```mermaid
 flowchart LR
