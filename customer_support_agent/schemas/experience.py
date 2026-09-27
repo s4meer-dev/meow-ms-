@@ -327,6 +327,8 @@ class MemoryEvaluation(BaseModel):
     mem0_only_memories: list[str] = Field(default_factory=list)
     hindsight_only_memories: list[str] = Field(default_factory=list)
     hindsight_available: bool = True
+    hindsight_status: str = "LIVE_SUCCESS"
+    mem0_status: str = "LIVE_SUCCESS"
     latency_ms: float = 0.0
     errors: list[str] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -378,6 +380,8 @@ def evaluate_memory_overlap(
     ticket_id: Optional[str | int] = None,
     customer_id: str = "",
     hindsight_available: bool = True,
+    hindsight_status: Optional[str] = None,
+    mem0_status: Optional[str] = None,
     latency_ms: float = 0.0,
     errors: Optional[list[str]] = None,
     error: Optional[str] = None,
@@ -397,6 +401,35 @@ def evaluate_memory_overlap(
 
     if any("failed" in e.lower() or "not enabled" in e.lower() or "unavailable" in e.lower() for e in err_list):
         hindsight_available = False
+
+    # Infer hindsight_status if not explicitly provided
+    resolved_hindsight_status = hindsight_status
+    if not resolved_hindsight_status:
+        err_text = " ".join(err_list).lower()
+        if "quota" in err_text or "rate limit" in err_text or "429" in err_text:
+            resolved_hindsight_status = "PROVIDER_QUOTA_ERROR"
+        elif "disabled" in err_text or "not enabled" in err_text:
+            resolved_hindsight_status = "DISABLED"
+        elif not hindsight_available or "unavailable" in err_text or "connection" in err_text:
+            resolved_hindsight_status = "UNAVAILABLE"
+        elif err_list:
+            if any("hindsight" in e.lower() for e in err_list):
+                resolved_hindsight_status = "LIVE_PARTIAL"
+            else:
+                resolved_hindsight_status = "LIVE_SUCCESS"
+        else:
+            resolved_hindsight_status = "LIVE_SUCCESS"
+
+    # Infer mem0_status if not explicitly provided
+    resolved_mem0_status = mem0_status
+    if not resolved_mem0_status:
+        err_text = " ".join(err_list).lower()
+        if "no embedding provider" in err_text or "not installed" in err_text:
+            resolved_mem0_status = "CONFIGURATION_ERROR"
+        elif "mem0" in err_text and ("error" in err_text or "failed" in err_text):
+            resolved_mem0_status = "UNAVAILABLE"
+        else:
+            resolved_mem0_status = "LIVE_SUCCESS"
 
     # Helper to extract clean keywords from a string
     stop_words = {
@@ -465,6 +498,8 @@ def evaluate_memory_overlap(
         mem0_only_memories=mem0_only,
         hindsight_only_memories=hindsight_only,
         hindsight_available=hindsight_available,
+        hindsight_status=resolved_hindsight_status,
+        mem0_status=resolved_mem0_status,
         latency_ms=round(latency_ms, 2),
         errors=err_list,
     )

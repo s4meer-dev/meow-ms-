@@ -138,6 +138,28 @@ class ExperienceMemoryService:
     def is_enabled(self) -> bool:
         return self._hindsight.is_enabled
 
+    def close(self) -> None:
+        """Close underlying Hindsight client connections synchronously."""
+        if hasattr(self._hindsight, "close"):
+            self._hindsight.close()
+
+    async def aclose(self) -> None:
+        """Clean up underlying Hindsight client connections asynchronously."""
+        if hasattr(self._hindsight, "aclose"):
+            await self._hindsight.aclose()
+
+    def __enter__(self) -> ExperienceMemoryService:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> ExperienceMemoryService:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
+
     async def aretain_experience(
         self,
         experience: SupportExperience,

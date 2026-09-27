@@ -49,13 +49,41 @@ class HindsightMemoryService:
             sanitized = sanitized.replace(self._settings.openai_api_key, "[REDACTED_OPENAI_KEY]")
         return sanitized
 
+    def close(self) -> None:
+        """Clean up underlying aiohttp connection pools synchronously."""
+        try:
+            if hasattr(self._client, "close"):
+                self._client.close()
+            elif hasattr(self._client, "aclose"):
+                try:
+                    loop = asyncio.get_running_loop()
+                    loop.create_task(self._client.aclose())
+                except RuntimeError:
+                    asyncio.run(self._client.aclose())
+        except Exception as exc:
+            logger.debug("Error while closing Hindsight client: %s", exc)
+
     async def aclose(self) -> None:
-        """Clean up underlying aiohttp connection pools."""
+        """Clean up underlying aiohttp connection pools asynchronously."""
         try:
             if hasattr(self._client, "aclose"):
                 await self._client.aclose()
+            elif hasattr(self._client, "close"):
+                self._client.close()
         except Exception as exc:
             logger.debug("Error while closing Hindsight client: %s", exc)
+
+    def __enter__(self) -> HindsightMemoryService:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> HindsightMemoryService:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
 
     async def health_check(self) -> dict[str, Any]:
         """
@@ -103,7 +131,13 @@ class HindsightMemoryService:
                     or "rate limit reached" in err_str.lower()
                     or "provider quota exhausted" in err_str.lower()
                 )
-                if is_rate_limit and attempt < max_retries - 1:
+                is_daily_quota = (
+                    "provider quota exhausted" in err_str.lower()
+                    or "(tpd)" in err_str.lower()
+                    or "tokens per day" in err_str.lower()
+                    or bool(re.search(r"try again in \d+(?:\.\d+)?(?:h|m)", err_str, re.IGNORECASE))
+                )
+                if is_rate_limit and not is_daily_quota and attempt < max_retries - 1:
                     match = re.search(r"try again in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
                     if match:
                         wait_sec = max(float(match.group(1)) + 3.0, 12.0)

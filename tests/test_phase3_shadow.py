@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -463,3 +463,65 @@ def test_diagnostic_endpoint_zero_secrets(mock_settings: Settings):
     assert "groq_api_key" not in raw_text
     assert "bearer" not in raw_text
     assert "secret" not in raw_text
+
+
+# Test 17: Memory status taxonomy classification
+def test_memory_status_taxonomy():
+    # 1. Config error when embedding provider is missing
+    eval_cfg = evaluate_memory_overlap(
+        mem0_results=[],
+        hindsight_results=[],
+        customer_id="test@example.com",
+        error="No embedding provider configured for Mem0",
+    )
+    assert eval_cfg.mem0_status == "CONFIGURATION_ERROR"
+    assert eval_cfg.hindsight_status == "LIVE_SUCCESS"
+
+    # 2. Provider quota error
+    eval_quota = evaluate_memory_overlap(
+        mem0_results=[],
+        hindsight_results=[],
+        customer_id="test@example.com",
+        error="ProviderRateLimitResetError: Provider quota exhausted on tokens per day (TPD)",
+    )
+    assert eval_quota.hindsight_status == "PROVIDER_QUOTA_ERROR"
+
+    # 3. Explicit statuses preserved
+    eval_explicit = evaluate_memory_overlap(
+        mem0_results=[],
+        hindsight_results=[],
+        customer_id="test@example.com",
+        hindsight_status="PROVIDER_QUOTA_ERROR",
+        mem0_status="CONFIGURATION_ERROR",
+    )
+    assert eval_explicit.hindsight_status == "PROVIDER_QUOTA_ERROR"
+    assert eval_explicit.mem0_status == "CONFIGURATION_ERROR"
+
+
+# Test 18: Client lifecycle management and clean closure
+@pytest.mark.anyio
+async def test_client_lifecycle_and_cleanup(mock_settings: Settings):
+    with patch("customer_support_agent.services.copilot_service.ChatGroq"), \
+         patch("customer_support_agent.services.copilot_service.create_agent"), \
+         patch("customer_support_agent.services.copilot_service.CustomerMemoryStore"), \
+         patch("customer_support_agent.services.copilot_service.KnowledgeBaseService"), \
+         patch("customer_support_agent.services.copilot_service.ExperienceMemoryService") as mock_exp_cls:
+
+        mock_exp_inst = MagicMock()
+        mock_exp_inst.aclose = AsyncMock()
+        mock_exp_cls.return_value = mock_exp_inst
+
+        copilot = SupportCopilot(mock_settings)
+        # Synchronous close
+        copilot.close()
+        mock_exp_inst.close.assert_called_once()
+
+        # Context manager
+        with copilot:
+            pass
+        assert mock_exp_inst.close.call_count == 2
+
+        # Async close
+        await copilot.aclose()
+        mock_exp_inst.aclose.assert_called_once()
+

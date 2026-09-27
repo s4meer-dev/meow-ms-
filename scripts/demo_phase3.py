@@ -1,13 +1,14 @@
 """
-MEOW — Phase 3 Manual Verification & Demo Script
+MEOW — Phase 3 Verification & Resilience Demo Script
 Dual-Memory Routing + Shadow Evaluation
 
 Demonstrates:
-1. Retaining support experience into customer Hindsight memory bank.
+1. Retaining support experience into customer Hindsight memory bank (or capturing provider status).
 2. Generating a ticket draft through SupportCopilot in Shadow Mode.
 3. Observing dual recall from Mem0 and Hindsight in parallel.
 4. Deterministic memory overlap analysis (Common, Mem0 Only, Hindsight Only).
 5. Proving that Hindsight is non-authoritative and does not alter production drafts.
+6. Honest status reporting for live components vs resilience fallbacks.
 """
 
 from __future__ import annotations
@@ -40,7 +41,7 @@ def run_demo() -> None:
     print("MEOW PHASE 3: DUAL-MEMORY ROUTING & SHADOW EVALUATION DEMO")
     print("Tagline: Support that remembers.")
     print("=" * 70)
-    print(f"Hindsight Enabled:          {settings.hindsight_enabled and settings.meow_hindsight_enabled}")
+    print(f"Hindsight Enabled:          {bool(settings.hindsight_enabled and settings.meow_hindsight_enabled)}")
     print(f"Shadow Mode:                {settings.meow_hindsight_shadow_mode}")
     print(f"Context Injection Enabled:  {settings.meow_hindsight_context_injection}")
     print(f"Hindsight API URL:          {settings.hindsight_api_url}")
@@ -63,6 +64,10 @@ def run_demo() -> None:
         "priority": "high",
         "status": "pending",
     }
+
+    exp_service: ExperienceMemoryService | None = None
+    hindsight_seed_status = "UNKNOWN"
+    hindsight_seed_error: str | None = None
 
     # Step 1: Retain past experience and preferences in Hindsight
     print("\n[STEP 1] Seeding Historical Experience in Hindsight...")
@@ -103,11 +108,25 @@ def run_demo() -> None:
             preference="Requires export pagination chunk size <= 250 rows and async completion webhook notification.",
         )
         print(f" -> Retained customer preference: {pref_res.get('document_id')}")
+        hindsight_seed_status = "LIVE_SUCCESS"
     except Exception as exc:
-        print(f" ! Note: Hindsight seed skipped or error (using fallback mocks if offline): {exc}")
+        hindsight_seed_error = str(exc)
+        err_lower = hindsight_seed_error.lower()
+        if "quota" in err_lower or "rate limit" in err_lower or "429" in err_lower:
+            hindsight_seed_status = "PROVIDER_QUOTA_ERROR"
+        elif "unavailable" in err_lower or "refused" in err_lower:
+            hindsight_seed_status = "UNAVAILABLE"
+        else:
+            hindsight_seed_status = "ERROR"
+        print(f" ! [RESILIENCE NOTICE] Hindsight retain not live ({hindsight_seed_status}): {exc}")
+        print(" ! Demonstrating MEOW resilience: copilot will proceed safely without crashing.")
+    finally:
+        if exp_service:
+            exp_service.close()
 
     # Step 2: Initialize SupportCopilot and Generate Draft
     print("\n[STEP 2] Running SupportCopilot.generate_draft() in Shadow Mode...")
+    copilot: SupportCopilot | None = None
     try:
         copilot = SupportCopilot(settings)
         result = copilot.generate_draft(ticket=demo_ticket, customer=demo_customer)
@@ -123,6 +142,11 @@ def run_demo() -> None:
         print("DUAL-MEMORY ROUTING & SHADOW EVALUATION AUDIT")
         print("=" * 70)
         signals = ctx.get("signals", {})
+        h_status = ctx.get("hindsight_status", "UNKNOWN")
+        m_status = ctx.get("mem0_status", "UNKNOWN")
+
+        print(f"Mem0 Status:            {m_status}")
+        print(f"Hindsight Status:       {h_status}")
         print(f"Mem0 Hits Count:        {signals.get('memory_hit_count', 0)}")
         print(f"Hindsight Hits Count:   {signals.get('hindsight_hit_count', 0)}")
         print(f"Knowledge Hits Count:   {signals.get('knowledge_hit_count', 0)}")
@@ -133,14 +157,14 @@ def run_demo() -> None:
         print("\n--- MEM0 PRODUCTION MEMORIES ---")
         mem0_hits = ctx.get("memory_hits", [])
         if not mem0_hits:
-            print("  (None found)")
+            print(f"  (None found - Mem0 Status: {m_status})")
         for idx, m in enumerate(mem0_hits, 1):
             print(f"  [{idx}] {m.get('memory')}")
 
         print("\n--- HINDSIGHT SHADOW MEMORIES ---")
         hindsight_hits = ctx.get("hindsight_hits", [])
         if not hindsight_hits:
-            print("  (None found)")
+            print(f"  (None found - Hindsight Status: {h_status})")
         for idx, h in enumerate(hindsight_hits, 1):
             print(f"  [{idx}] [{h.get('category')}] {h.get('text')}")
 
@@ -159,18 +183,41 @@ def run_demo() -> None:
             print(f"\nHindsight Only Facts ({len(hindsight_only)}):")
             for ho in hindsight_only:
                 print(f"   * {ho}")
-            print(f"\nOverlap Ratio: {eval_data.get('overlap_ratio', 0.0)}")
+            print(f"\nOverlap Ratio:       {eval_data.get('overlap_ratio', 0.0)}")
             print(f"Hindsight Available: {eval_data.get('hindsight_available', False)}")
         else:
             print("  (No evaluation performed or Hindsight disabled)")
 
+        print("\n" + "=" * 70)
+        print("PHASE 3 VERIFICATION SUMMARY")
         print("=" * 70)
-        print("PHASE 3 VERIFICATION COMPLETE: ALL INTEGRITY CHECKS PASSED")
+        print(f"Hindsight Seed Status:     {hindsight_seed_status}")
+        print(f"Hindsight Recall Status:   {h_status}")
+        print(f"Mem0 Status:               {m_status}")
+        print("Resilience Check:          PASSED (Copilot generated draft without crashing)")
+        print("Shadow Mode Isolation:     PASSED (Hindsight did NOT alter production draft)")
+
+        is_live_pass = (h_status == "LIVE_SUCCESS" and m_status == "LIVE_SUCCESS" and hindsight_seed_status == "LIVE_SUCCESS")
+        if is_live_pass:
+            print("Live Memory Verification:  PASS (Both Mem0 and Hindsight operational)")
+        else:
+            blockers = []
+            if hindsight_seed_status != "LIVE_SUCCESS":
+                blockers.append(f"Hindsight retain ({hindsight_seed_status})")
+            if h_status != "LIVE_SUCCESS":
+                blockers.append(f"Hindsight recall ({h_status})")
+            if m_status != "LIVE_SUCCESS":
+                blockers.append(f"Mem0 ({m_status})")
+            print(f"Live Memory Verification:  BLOCKED: {', '.join(blockers)}")
+            print("To run strict live verification, use: python scripts/demo_phase3_live.py")
         print("=" * 70)
     except Exception as exc:
         print(f"Error during draft generation: {exc}")
         import traceback
         traceback.print_exc()
+    finally:
+        if copilot:
+            copilot.close()
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -69,7 +70,30 @@ class SupportCopilot:
                 self._hindsight_error = str(exc)
                 logger.warning("Failed to initialize ExperienceMemoryService: %s", exc)
 
-    
+    def close(self) -> None:
+        """Close any open integration clients (such as Hindsight) synchronously."""
+        if self.experience_service and hasattr(self.experience_service, "close"):
+            self.experience_service.close()
+
+    async def aclose(self) -> None:
+        """Clean up open integration clients asynchronously."""
+        if self.experience_service and hasattr(self.experience_service, "aclose"):
+            res = self.experience_service.aclose()
+            if asyncio.iscoroutine(res) or hasattr(res, "__await__"):
+                await res
+
+    def __enter__(self) -> SupportCopilot:
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> SupportCopilot:
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        await self.aclose()
+
     def generate_draft(self, ticket: dict[str, Any], customer: dict[str, Any]) -> dict[str, Any]:
         query = f"{ticket['subject']}\n{ticket['description']}"
         customer_email = customer["email"]
@@ -83,11 +107,31 @@ class SupportCopilot:
         kb_hits = self.rag.search(query=query, top_k=self._settings.rag_top_k)
 
         # MEOW Phase 3: Shadow Recall & Evaluation
+        if self._memory_error:
+            if "no embedding provider" in self._memory_error.lower() or "not installed" in self._memory_error.lower():
+                mem0_status = "CONFIGURATION_ERROR"
+            else:
+                mem0_status = "UNAVAILABLE"
+        elif not self.memory:
+            mem0_status = "DISABLED"
+        else:
+            mem0_status = "LIVE_SUCCESS"
+
         hindsight_evidence: list[HindsightEvidence] = []
         memory_evaluation: MemoryEvaluation | None = None
         hindsight_error: str | None = None
+        hindsight_status: str
 
-        if self.experience_service and getattr(self._settings, "meow_hindsight_enabled", False):
+        if not getattr(self._settings, "hindsight_enabled", False) or not getattr(self._settings, "meow_hindsight_enabled", False):
+            hindsight_status = "DISABLED"
+        elif self._hindsight_error:
+            err_lower = self._hindsight_error.lower()
+            if "quota" in err_lower or "rate limit" in err_lower or "429" in err_lower:
+                hindsight_status = "PROVIDER_QUOTA_ERROR"
+            else:
+                hindsight_status = "UNAVAILABLE"
+            hindsight_error = f"Hindsight initialization failed: {self._hindsight_error}"
+        elif self.experience_service:
             try:
                 hindsight_query = build_hindsight_recall_query(ticket=ticket, customer=customer)
                 hindsight_evidence = self.experience_service.recall_customer_evidence(
@@ -95,16 +139,27 @@ class SupportCopilot:
                     query=hindsight_query,
                     budget="mid",
                 )
+                hindsight_status = "LIVE_SUCCESS"
             except Exception as exc:
                 hindsight_error = f"Hindsight shadow recall failed: {exc}"
+                err_lower = str(exc).lower()
+                if "quota" in err_lower or "rate limit" in err_lower or "429" in err_lower:
+                    hindsight_status = "PROVIDER_QUOTA_ERROR"
+                else:
+                    hindsight_status = "UNAVAILABLE"
                 logger.warning(hindsight_error)
+        else:
+            hindsight_status = "UNAVAILABLE"
 
+        if getattr(self._settings, "hindsight_enabled", False) and getattr(self._settings, "meow_hindsight_enabled", False):
             try:
                 memory_evaluation = evaluate_memory_overlap(
                     mem0_results=memory_hits,
                     hindsight_results=hindsight_evidence,
                     ticket_id=ticket.get("id"),
                     customer_id=customer_email,
+                    hindsight_status=hindsight_status,
+                    mem0_status=mem0_status,
                     error=hindsight_error,
                 )
             except Exception as exc:
@@ -154,6 +209,8 @@ class SupportCopilot:
             tool_calls=tool_calls,
             hindsight_evidence=hindsight_evidence,
             memory_evaluation=memory_evaluation,
+            hindsight_status=hindsight_status,
+            mem0_status=mem0_status,
         )
         if self._memory_error:
             context_used.setdefault("errors", []).append(f"Memory disabled: {self._memory_error}")
@@ -610,6 +667,8 @@ class SupportCopilot:
         tool_calls: list[dict[str, Any]],
         hindsight_evidence: list[HindsightEvidence] | None = None,
         memory_evaluation: MemoryEvaluation | None = None,
+        hindsight_status: str = "LIVE_SUCCESS",
+        mem0_status: str = "LIVE_SUCCESS",
     ) -> dict[str, Any]:
 
         knowledge_sources = self._unique_ordered(
@@ -633,6 +692,8 @@ class SupportCopilot:
                 "name": customer.get("name"),
                 "company": customer.get("company"),
             },
+            "hindsight_status": hindsight_status,
+            "mem0_status": mem0_status,
             "signals": {
                 "memory_hit_count": len(memory_hits),
                 "knowledge_hit_count": len(kb_hits),
@@ -641,6 +702,8 @@ class SupportCopilot:
                 "knowledge_sources": knowledge_sources,
                 "hindsight_hit_count": len(hindsight_list),
                 "memory_overlap_count": len(memory_evaluation.common_facts) if memory_evaluation else 0,
+                "hindsight_status": hindsight_status,
+                "mem0_status": mem0_status,
             },
             "highlights": {
                 "memory": [self._trim_text(item.get("memory", "")) for item in memory_hits[:3]],
