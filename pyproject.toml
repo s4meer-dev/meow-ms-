@@ -1,8 +1,8 @@
 [project]
-name = "customer-support-agent"
+name = "meow"
 version = "0.1.0"
-description = "AI copilot for support agents with FastAPI, LangChain, Mem0, and ChromaDB"
-readme = "Plan.md"
+description = "MEOW — Memory-Enhanced Operations & Workflow: Support that remembers"
+readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
   "fastapi",

@@ -1,8 +1,12 @@
-# Customer Support Agent Live
+# MEOW: Memory-Enhanced Operations & Workflow
 
-AI Copilot for Support Agents using FastAPI, Streamlit, LangChain agents, Groq LLMs, ChromaDB RAG, Mem0-style customer memory, SQLite, Docker, and EC2 deployment workflows.
+> **Tagline:** "Support that remembers."
+>
+> **Project:** MEOW is an AI customer support agent that remembers customer history, learns from past resolutions, and improves support through continuous memory.
 
-This project is designed as a recruiter-friendly and interview-ready production AI application. It shows how a support team can use an AI copilot to create grounded, empathetic, and actionable customer reply drafts by combining ticket data, company knowledge, customer memory, and backend tool calls.
+AI Copilot for Support Agents using FastAPI, Streamlit, LangChain agents, Groq LLMs, ChromaDB RAG, customer memory, SQLite, Docker, and deployment workflows.
+
+This project serves as the foundational baseline for MEOW, demonstrating grounded, empathetic, and actionable customer reply drafts by combining ticket data, company knowledge, customer memory, and backend tool calls.
 
 ## Interview Pitch
 
