@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import MagicMock
 import os
 import pytest
@@ -13,7 +14,7 @@ async def hindsight_service():
     url = os.getenv("HINDSIGHT_API_URL", "http://localhost:8888")
     settings = Settings(
         hindsight_api_url=url,
-        hindsight_timeout=10.0,
+        hindsight_timeout=120.0,
         hindsight_enabled=True,
     )
     service = HindsightMemoryService(settings=settings)
@@ -92,6 +93,9 @@ async def test_live_hindsight_retain_recall_reflect_and_isolation(hindsight_serv
     )
     assert retain_a["status"] == "ok"
 
+    # Allow token bucket breathing room between sequential retains on free provider tier
+    await asyncio.sleep(6)
+
     # Retain synthetic experience for Customer B
     content_b = (
         "Customer test-002 encountered an authentication 401 error. "
@@ -124,6 +128,9 @@ async def test_live_hindsight_retain_recall_reflect_and_isolation(hindsight_serv
     )
     recalled_text_b = recall_b.get("text", "") + " " + " ".join(r.get("text", "") for r in recall_b.get("results", []))
     assert "90 seconds" not in recalled_text_b
+
+    # Allow token bucket breathing room on free provider tier before multi-turn reflect
+    await asyncio.sleep(12)
 
     # Reflect on Customer A's bank
     reflect_a = await hindsight_service.areflect(

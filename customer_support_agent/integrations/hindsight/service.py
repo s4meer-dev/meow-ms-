@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from typing import Any, Optional
 
 from hindsight_client import Hindsight
@@ -88,6 +89,37 @@ class HindsightMemoryService:
                 "error": clean_err,
             }
 
+    async def _execute_with_retry(self, coroutine_func: Any, *args: Any, **kwargs: Any) -> Any:
+        """Execute an asynchronous Hindsight SDK call with automated backoff retry on provider rate limits."""
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                return await coroutine_func(*args, **kwargs)
+            except Exception as exc:
+                err_str = str(exc)
+                is_rate_limit = (
+                    "429" in err_str
+                    or "rate_limit_exceeded" in err_str
+                    or "rate limit reached" in err_str.lower()
+                    or "provider quota exhausted" in err_str.lower()
+                )
+                if is_rate_limit and attempt < max_retries - 1:
+                    match = re.search(r"try again in (\d+(?:\.\d+)?)s", err_str, re.IGNORECASE)
+                    if match:
+                        wait_sec = max(float(match.group(1)) + 3.0, 12.0)
+                    else:
+                        wait_sec = 10.0 * (attempt + 1)
+                    wait_sec = min(wait_sec, 45.0)
+                    logger.warning(
+                        "Hindsight rate limit encountered. Backing off for %.1fs before retry (%d/%d)...",
+                        wait_sec,
+                        attempt + 1,
+                        max_retries,
+                    )
+                    await asyncio.sleep(wait_sec)
+                    continue
+                raise
+
     async def aretain(
         self,
         bank_id: str,
@@ -106,7 +138,8 @@ class HindsightMemoryService:
             raise ValueError("content cannot be empty")
 
         try:
-            response = await self._client.aretain(
+            response = await self._execute_with_retry(
+                self._client.aretain,
                 bank_id=bank_id.strip(),
                 content=content,
                 context=context,
@@ -141,7 +174,8 @@ class HindsightMemoryService:
             raise ValueError("query cannot be empty")
 
         try:
-            response = await self._client.arecall(
+            response = await self._execute_with_retry(
+                self._client.arecall,
                 bank_id=bank_id.strip(),
                 query=query.strip(),
                 max_tokens=max_tokens,
@@ -198,7 +232,8 @@ class HindsightMemoryService:
             raise ValueError("query cannot be empty")
 
         try:
-            response = await self._client.areflect(
+            response = await self._execute_with_retry(
+                self._client.areflect,
                 bank_id=bank_id.strip(),
                 query=query.strip(),
                 context=context,

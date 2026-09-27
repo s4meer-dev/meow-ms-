@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     app_name: str = "AI Copilot for Support Agents"
 
     groq_api_key: str = ""
-    groq_model: str = "llama-3.1-8b-instant"
+    groq_model: str = "openai/gpt-oss-120b"
     llm_temperature: float = 0.2
 
 
