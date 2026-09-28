@@ -841,7 +841,21 @@ if app_mode == "🧪 DEMO MODE":
                 </div>
                 """
 
-            st.markdown('<div class="meow-activity-panel"><div class="meow-card-header">Live System Activity</div><div style="font-size:0.85rem;color:#94a3b8;">Streaming real-time component telemetry...</div></div>', unsafe_allow_html=True)
+            st.markdown(
+                f"""
+                <div class="meow-activity-panel">
+                    <div class="meow-activity-title">
+                        <span>● LIVE SYSTEM ACTIVITY</span>
+                        <span style="font-size: 0.68rem; color: #34d399; font-weight: 600;">CONNECTED</span>
+                    </div>
+                    <div style="max-height: 250px; overflow-y: auto;">
+                        {events_html if events_html else '<div style="color: #64748b; font-size: 0.78rem;">No events yet. Start the demo to observe system actions.</div>'}
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
 
     with tab_mem:
         st.info("Customer Memory Architecture (Mem0 + Hindsight)")
