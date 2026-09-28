@@ -858,10 +858,140 @@ if app_mode == "🧪 DEMO MODE":
 
 
     with tab_mem:
-        st.info("Customer Memory Architecture (Mem0 + Hindsight)")
+        st.markdown('<div class="meow-card-header">Customer Memory Architecture (Mem0 + Hindsight)</div>', unsafe_allow_html=True)
+        c_m1, c_m2 = st.columns(2)
+
+        with c_m1:
+            st.markdown("### 👤 Mem0 — Customer Facts")
+            st.caption("Factual customer profile. Only updated when a resolution is verified and accepted.")
+            mem0_data = system_state["mem0"]
+            st.markdown(f"**Customer User ID:** `{mem0_data['user_id']}`")
+            st.markdown(f"**Recent Write Action:** `{mem0_data['recent_write']}`")
+            st.markdown("**Confirmed Facts:**")
+            for f in mem0_data["facts"]:
+                st.markdown(f"• {f}")
+
+        with c_m2:
+            st.markdown("### 🧠 Hindsight — Experiential Bank")
+            st.caption("Episodic & experiential memory bank. Retains what worked, what failed, preferences, and patterns.")
+            h_data = system_state["hindsight"]
+            st.markdown(f"**Bank ID:** `{h_data['bank_id']}` &nbsp;•&nbsp; **Total Experiences:** `{h_data['experience_count']}`")
+            if not h_data["experiences"]:
+                st.info("⚪ 0 experiences in bank. Clean slate for this customer.")
+            else:
+                for exp in h_data["experiences"]:
+                    cat = exp.get("category", "EXPERIENCE")
+                    if cat == "SUCCESS":
+                        st.success(f"🟢 **[PROVEN FIX]** {exp['text']}")
+                    elif cat == "FAILURE":
+                        st.error(f"🔴 **[DO NOT REPEAT]** {exp['text']}")
+                    elif cat == "PREFERENCE":
+                        st.info(f"🟣 **[PREFERENCE]** {exp['text']}")
+                    elif cat == "PATTERN":
+                        st.info(f"🔵 **[PATTERN]** {exp['text']}")
+
+    # -----------------------------------------------------------------------
+    # TAB 3: KNOWLEDGE VIEW (RAG / ChromaDB)
+    # -----------------------------------------------------------------------
     with tab_rag:
-        st.info("Company Knowledge Base (ChromaDB / RAG)")
+        st.markdown('<div class="meow-card-header">Company Knowledge Base (ChromaDB / RAG)</div>', unsafe_allow_html=True)
+        rag_data = system_state["rag"]
+        st.markdown(f"**Search Query:** `{rag_data['query']}`")
+        st.markdown(f"**Matched Document:** `{rag_data['document']}` — **{rag_data['title']}**")
+        st.markdown(f"**Retrieval Relevance Score:** `{rag_data['match_score']}` &nbsp;•&nbsp; <strong style='color:#34d399;'>Used by SupportCopilot ✓</strong>", unsafe_allow_html=True)
+        st.markdown("**Retrieved Excerpt:**")
+        st.markdown(
+            f"""
+            <div style="background: rgba(15, 23, 42, 0.8); border-left: 3px solid #38bdf8; padding: 12px 16px; border-radius: 6px; font-size: 0.88rem; color: #f1f5f9;">
+                "{rag_data['excerpt']}"
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # -----------------------------------------------------------------------
+    # TAB 4: SYSTEM VIEW (SQLite & Architecture)
+    # -----------------------------------------------------------------------
     with tab_sys:
-        st.info("System Architecture & SQLite Repository")
+        st.markdown('<div class="meow-card-header">System Architecture & SQLite Repository</div>', unsafe_allow_html=True)
+
+        c_s1, c_s2 = st.columns(2)
+        with c_s1:
+            st.markdown("### 🗄️ SQLite Tables (Demo Isolation)")
+            sql_data = system_state["sqlite"]
+            st.markdown(f"**Customer:** `{sql_data['customer']['name']}` (`{sql_data['customer']['email']}`)")
+
+            st.markdown("**Tickets:**")
+            if not sql_data["tickets"]:
+                st.caption("No tickets created yet.")
+            else:
+                for t in sql_data["tickets"]:
+                    st.markdown(f"• `#{t['id']}` — {t['subject']} — <strong style='color:#38bdf8;'>{t['status'].upper()}</strong>", unsafe_allow_html=True)
+
+            st.markdown("**Drafts:**")
+            if not sql_data["drafts"]:
+                st.caption("No drafts generated yet.")
+            else:
+                for d in sql_data["drafts"]:
+                    st.markdown(f"• Draft `#{d['id']}` (Ticket #{d['ticket_id']}) — <strong style='color:#38bdf8;'>{d['status'].upper()}</strong>", unsafe_allow_html=True)
+
+        with c_s2:
+            st.markdown("### 🔌 Connected System Architecture")
+            st.code(
+                """
+CUSTOMER
+   ↓
+FastAPI
+   ↓
+SupportCopilot
+   ↓
+┌───────────────┬──────────────┬───────────────┐
+│ Mem0          │ RAG          │ Hindsight     │
+│ Customer      │ Company      │ Experience    │
+│ Facts         │ Knowledge    │ Memory        │
+└───────────────┴──────────────┴───────────────┘
+   ↓
+AI Recommendation
+   ↓
+Human Outcome (Accept / Reject)
+   ↓
+Hindsight learns from outcome
+   ↓
+Future Recall (Avoids failure + applies fix)
+                """,
+                language="text",
+            )
+
+    # -----------------------------------------------------------------------
+    # TAB 5: LIVE ACTIVITY LOG VIEW
+    # -----------------------------------------------------------------------
     with tab_activity:
-        st.info("Full Chronological Event Stream")
+        st.markdown('<div class="meow-card-header">Full Chronological Event Stream</div>', unsafe_allow_html=True)
+        st.caption("Observability stream recording every component event across SQLite, Mem0, RAG, Hindsight, and Groq.")
+        all_events = controller.get_events()
+        for ev in reversed(all_events):
+            comp = ev["component"]
+            badge_class = f"badge-{comp.lower()}"
+            st.markdown(
+                f"""
+                <div class="meow-event-item" style="padding: 8px 0;">
+                    <span class="meow-event-time" style="font-size: 0.8rem;">{ev['timestamp']}</span>
+                    <span class="meow-comp-badge {badge_class}" style="font-size: 0.75rem;">{comp}</span>
+                    <strong style="color: #ffffff; font-size: 0.82rem;">{ev['action']}</strong>
+                    <span class="meow-event-desc" style="color: #cbd5e1;">— {ev['description']}</span>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+    # -----------------------------------------------------------------------
+    # Technical Details Expander (Collapsed)
+    # -----------------------------------------------------------------------
+    st.divider()
+    with st.expander("Technical Details ▸", expanded=False):
+        st.markdown("**Sanitized Runtime Context**")
+        context_data = payload.get("context_used") or {}
+        st.json(sanitize_obj_for_display(context_data))
+
+
+# ===========================================================================
