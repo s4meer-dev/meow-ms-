@@ -457,6 +457,92 @@ with nav_right:
 
 
 # ===========================================================================
+# DEMO MODE: Connected Observable System Walkthrough
+# ===========================================================================
+if app_mode == "🧪 DEMO MODE":
+    if "demo_controller" not in st.session_state:
+        st.session_state.demo_controller = DemoLearningController()
+    if "demo_step" not in st.session_state:
+        st.session_state.demo_step = "START"
 
-# Placeholder for workspace layout
-st.info("MEOW Connected Observability Workspace Initializing...")
+    controller: DemoLearningController = st.session_state.demo_controller
+    state = controller.state
+    step = st.session_state.demo_step
+
+    # Synchronize step if controller was reset or changed
+    if state == DemoState.NEW_CUSTOMER and step != "START":
+        st.session_state.demo_step = "START"
+        step = "START"
+    elif state == DemoState.FIRST_TICKET and step not in ("STEP_1_PROBLEM", "STEP_2_MEMORY", "STEP_3_RECOMMENDATION"):
+        st.session_state.demo_step = "STEP_1_PROBLEM"
+        step = "STEP_1_PROBLEM"
+    elif state == DemoState.REJECTED_FAILURE and step != "STEP_4_FEEDBACK":
+        st.session_state.demo_step = "STEP_4_FEEDBACK"
+        step = "STEP_4_FEEDBACK"
+    elif state == DemoState.SECOND_TICKET and step != "STEP_5_RETURNS":
+        st.session_state.demo_step = "STEP_5_RETURNS"
+        step = "STEP_5_RETURNS"
+    elif state == DemoState.ACCEPTED_SUCCESS and step != "STEP_6_SUCCESS":
+        st.session_state.demo_step = "STEP_6_SUCCESS"
+        step = "STEP_6_SUCCESS"
+    elif state in (DemoState.THIRD_TICKET, DemoState.LEARNED_STATE) and step != "STEP_7_FULL_RECALL":
+        st.session_state.demo_step = "STEP_7_FULL_RECALL"
+        step = "STEP_7_FULL_RECALL"
+
+    payload = controller.get_current_payload()
+    system_state = controller.get_system_state()
+    deltas = controller.get_deltas()
+    recent_events = controller.get_events(limit=8)
+
+    # Multi-screen connected views
+    tab_demo, tab_mem, tab_rag, tab_sys, tab_activity = st.tabs([
+        "🎬 DEMO WORKSPACE",
+        "🧠 MEMORY (Mem0 & Hindsight)",
+        "📚 KNOWLEDGE (RAG)",
+        "⚙ SYSTEM (SQLite & APIs)",
+        "🕒 LIVE ACTIVITY LOG",
+    ])
+
+
+    # -----------------------------------------------------------------------
+    # TAB 1: DEMO WORKSPACE (4 Visual Zones)
+    # -----------------------------------------------------------------------
+    with tab_demo:
+
+        # ZONE 1: TOP (Now Banner & Stage Heading)
+        now_messages = {
+            "START": "Alex Rivera has submitted a novel support issue.",
+            "STEP_1_PROBLEM": "Alex has reported a novel timeout error MEOW has never seen before.",
+            "STEP_2_MEMORY": "MEOW is searching customer facts, company documentation, and historical experience.",
+            "STEP_3_RECOMMENDATION": "MEOW generated an initial standard resolution based only on documentation.",
+            "STEP_4_FEEDBACK": "Human agent rejected draft — MEOW is recording failure into Hindsight experience.",
+            "STEP_5_RETURNS": "Alex returns with the same issue — MEOW recalls the failure and proposes a new fix.",
+            "STEP_6_SUCCESS": "Human agent accepted draft — MEOW retains proven fix into Hindsight & Mem0.",
+            "STEP_7_FULL_RECALL": "Alex returns for month-end export — MEOW recalls full history for optimal response.",
+        }
+        now_text = now_messages.get(step, "Active Demonstration")
+
+        st.markdown(
+            f"""
+            <div class="meow-now-bar">
+                <span class="meow-now-tag">NOW</span>
+                <span class="meow-now-desc">{now_text}</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # 4 VISUAL ZONES LAYOUT: Main Action (Left 3 cols), Live Activity & What Changed (Right 2 cols)
+        col_main, col_side = st.columns([3, 2])
+
+
+        st.info("MEOW Demo Workspace: Primary story progression active.")
+
+    with tab_mem:
+        st.info("Customer Memory Architecture (Mem0 + Hindsight)")
+    with tab_rag:
+        st.info("Company Knowledge Base (ChromaDB / RAG)")
+    with tab_sys:
+        st.info("System Architecture & SQLite Repository")
+    with tab_activity:
+        st.info("Full Chronological Event Stream")
