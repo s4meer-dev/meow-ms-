@@ -109,6 +109,10 @@ class DemoLearningController:
         self.state: DemoState = DemoState.NEW_CUSTOMER
         self.rejection_reason: str | None = None
         self.events: list[DemoEvent] = []
+        self.demo_tickets: list[dict[str, Any]] = []
+        self.demo_drafts: list[dict[str, Any]] = []
+        self.demo_mem0_facts: list[str] = ["Customer uses custom enterprise export pipeline"]
+        self.demo_hindsight_experiences: list[dict[str, Any]] = []
         self._emit("System", "DEMO_INITIALIZED", "info", "Demo environment initialized (customer: Alex Rivera)")
 
     def _emit(self, component: str, action: str, status: str, description: str) -> None:
@@ -126,11 +130,24 @@ class DemoLearningController:
         self.state = DemoState.NEW_CUSTOMER
         self.rejection_reason = None
         self.events.clear()
+        self.demo_tickets.clear()
+        self.demo_drafts.clear()
+        self.demo_mem0_facts = ["Customer uses custom enterprise export pipeline"]
+        self.demo_hindsight_experiences.clear()
         self._emit("System", "DEMO_RESET", "info", "All demo state, tickets, and memory banks reset to clean state.")
 
     def advance_to_ticket_1(self) -> None:
         """Stage 1: Generate initial ticket with novel issue (0 prior experience)."""
         self.state = DemoState.FIRST_TICKET
+        t1 = dict(DEMO_TICKET_1)
+        t1["status"] = "open"
+        self.demo_tickets = [t1]
+        self.demo_drafts = [{
+            "id": 5001,
+            "ticket_id": 1001,
+            "content": "Hi Alex, please try clearing your local browser and proxy cache...",
+            "status": "pending",
+        }]
         self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1001 created: Large report API timeout error 504")
         self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (1 fact: Custom enterprise export pipeline)")
         self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide (relevance: 0.94)")
@@ -142,6 +159,18 @@ class DemoLearningController:
         """Stage 2: Human rejects initial draft -> FAILURE retained."""
         self.rejection_reason = reason
         self.state = DemoState.REJECTED_FAILURE
+        if self.demo_drafts:
+            self.demo_drafts[0]["status"] = "discarded"
+            self.demo_drafts[0]["rejection_reason"] = reason
+
+        self.demo_hindsight_experiences = [
+            {
+                "category": "FAILURE",
+                "text": "Proposed cache clearing failed: Already tried without effect",
+                "score": 0.90,
+                "metadata": {"timestamp": "2026-09-27", "ticket_id": "1001", "has_failed_attempts": "true"},
+            }
+        ]
         self._emit("SQLite", "DRAFT_DISCARDED", "warn", f"Draft #5001 marked DISCARDED (Reason: {reason})")
         self._emit("Mem0", "MEM0_BYPASSED", "info", "Bypassed Mem0: Rejected solution is unconfirmed, NOT saved as customer fact")
         self._emit("Hindsight", "RETENTION_STARTED", "info", "Storing rejected troubleshooting attempt into bank 'alex_rivera'")
@@ -150,6 +179,16 @@ class DemoLearningController:
     def advance_to_ticket_2(self) -> None:
         """Stage 3: Second ticket recalls FAILURE and avoids repeated mistake."""
         self.state = DemoState.SECOND_TICKET
+        t2 = dict(DEMO_TICKET_2)
+        t2["status"] = "open"
+        if len(self.demo_tickets) == 1:
+            self.demo_tickets.append(t2)
+        self.demo_drafts.append({
+            "id": 5002,
+            "ticket_id": 1002,
+            "content": "Hi Alex, we note clearing cache failed. Increase API client timeout to 90s...",
+            "status": "pending",
+        })
         self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1002 created: API 504 recurring timeout (status: open)")
         self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (1 fact)")
         self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide (API timeout threshold raised to 90s)")
@@ -160,6 +199,29 @@ class DemoLearningController:
     def accept_ticket_2(self) -> None:
         """Stage 4: Human accepts proven fix -> SUCCESS retained."""
         self.state = DemoState.ACCEPTED_SUCCESS
+        if len(self.demo_drafts) >= 2:
+            self.demo_drafts[1]["status"] = "accepted"
+        if len(self.demo_tickets) >= 2:
+            self.demo_tickets[1]["status"] = "resolved"
+
+        self.demo_mem0_facts = [
+            "Customer uses custom enterprise export pipeline",
+            "Confirmed resolution: Increase API client timeout to 90s for large export timeouts",
+        ]
+        self.demo_hindsight_experiences = [
+            {
+                "category": "SUCCESS",
+                "text": "Increase API timeout from 30 to 90 seconds resolved large export timeout",
+                "score": 0.96,
+                "metadata": {"timestamp": "2026-09-27", "ticket_id": "1002", "is_resolved": "true"},
+            },
+            {
+                "category": "FAILURE",
+                "text": "Clear cache was previously rejected by customer (Already tried)",
+                "score": 0.90,
+                "metadata": {"timestamp": "2026-09-27", "ticket_id": "1001"},
+            },
+        ]
         self._emit("SQLite", "DRAFT_ACCEPTED", "ok", "Draft #5002 marked ACCEPTED by human agent")
         self._emit("SQLite", "TICKET_RESOLVED", "ok", "Ticket #1002 marked RESOLVED")
         self._emit("Mem0", "FACT_SAVED", "ok", "Confirmed resolution stored in Mem0: Timeout raised 30s → 90s")
@@ -169,6 +231,42 @@ class DemoLearningController:
     def advance_to_ticket_3(self) -> None:
         """Stage 5: Third ticket recalls SUCCESS + FAILURE + PREFERENCE + PATTERN."""
         self.state = DemoState.THIRD_TICKET
+        t3 = dict(DEMO_TICKET_3)
+        t3["status"] = "open"
+        if len(self.demo_tickets) == 2:
+            self.demo_tickets.append(t3)
+        self.demo_drafts.append({
+            "id": 5003,
+            "ticket_id": 1003,
+            "content": "Alex:\n\nSet `export_timeout: 90s` in export config.",
+            "status": "pending",
+        })
+        self.demo_hindsight_experiences = [
+            {
+                "category": "SUCCESS",
+                "text": "Increase API timeout from 30 to 90 seconds (Proven fix)",
+                "score": 0.96,
+                "metadata": {"timestamp": "2026-09-27", "ticket_id": "1002"},
+            },
+            {
+                "category": "FAILURE",
+                "text": "Clear cache was previously rejected by customer (Do not repeat)",
+                "score": 0.91,
+                "metadata": {"timestamp": "2026-09-27", "ticket_id": "1001"},
+            },
+            {
+                "category": "PREFERENCE",
+                "text": "Customer prefers concise technical instructions without generic greetings",
+                "score": 0.95,
+                "metadata": {"type": "preference"},
+            },
+            {
+                "category": "PATTERN",
+                "text": "Repeated report timeout issue occurs on end-of-month large batch exports",
+                "score": 0.88,
+                "metadata": {"type": "pattern"},
+            },
+        ]
         self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1003 created: End-of-month batch export timeout (status: open)")
         self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (2 confirmed facts)")
         self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide")
@@ -186,6 +284,40 @@ class DemoLearningController:
         if limit is not None:
             return evs[-limit:]
         return evs
+
+    def get_system_state(self) -> dict[str, Any]:
+        """Return the current observable state of all connected components."""
+        return {
+            "sqlite": {
+                "customer": dict(DEMO_CUSTOMER),
+                "tickets": [dict(t) for t in self.demo_tickets],
+                "drafts": [dict(d) for d in self.demo_drafts],
+            },
+            "mem0": {
+                "user_id": DEMO_CUSTOMER["email"],
+                "facts": list(self.demo_mem0_facts),
+                "recent_write": (
+                    "Confirmed resolution saved"
+                    if self.state in (DemoState.ACCEPTED_SUCCESS, DemoState.THIRD_TICKET, DemoState.LEARNED_STATE)
+                    else ("Bypassed on rejection" if self.state == DemoState.REJECTED_FAILURE else "None")
+                ),
+            },
+            "rag": {
+                "query": "Large report API timeout error 504 batch export",
+                "document": "kb_api_guide",
+                "title": "API Client Timeout & Retry Thresholds",
+                "excerpt": (
+                    "For high-volume asynchronous and ledger export requests exceeding 500 rows, "
+                    "default gateway timeout of 30s may be raised up to 90s in client configuration via export_timeout parameter."
+                ),
+                "match_score": 0.94,
+            },
+            "hindsight": {
+                "bank_id": "customer_bank_alex_rivera",
+                "experience_count": len(self.demo_hindsight_experiences),
+                "experiences": [dict(e) for e in self.demo_hindsight_experiences],
+            },
+        }
 
     def get_current_payload(self) -> dict[str, Any]:
         """Produce the complete UI payload for the current demo state."""
