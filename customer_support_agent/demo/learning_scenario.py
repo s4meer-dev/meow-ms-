@@ -20,8 +20,28 @@ LEARNED_STATE
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Any
+
+
+@dataclass
+class DemoEvent:
+    timestamp: str
+    component: str  # "SQLite", "Mem0", "RAG", "Hindsight", "Groq", "System"
+    action: str
+    status: str     # "ok", "info", "warn", "error"
+    description: str
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "timestamp": self.timestamp,
+            "component": self.component,
+            "action": self.action,
+            "status": self.status,
+            "description": self.description,
+        }
 
 
 class DemoState(str, Enum):
