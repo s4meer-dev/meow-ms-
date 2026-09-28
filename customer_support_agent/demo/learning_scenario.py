@@ -108,36 +108,84 @@ class DemoLearningController:
     def __init__(self) -> None:
         self.state: DemoState = DemoState.NEW_CUSTOMER
         self.rejection_reason: str | None = None
+        self.events: list[DemoEvent] = []
+        self._emit("System", "DEMO_INITIALIZED", "info", "Demo environment initialized (customer: Alex Rivera)")
+
+    def _emit(self, component: str, action: str, status: str, description: str) -> None:
+        now_str = datetime.now().strftime("%H:%M:%S")
+        self.events.append(DemoEvent(
+            timestamp=now_str,
+            component=component,
+            action=action,
+            status=status,
+            description=description,
+        ))
 
     def reset(self) -> None:
         """Reset scenario back to NEW_CUSTOMER."""
         self.state = DemoState.NEW_CUSTOMER
         self.rejection_reason = None
+        self.events.clear()
+        self._emit("System", "DEMO_RESET", "info", "All demo state, tickets, and memory banks reset to clean state.")
 
     def advance_to_ticket_1(self) -> None:
         """Stage 1: Generate initial ticket with novel issue (0 prior experience)."""
         self.state = DemoState.FIRST_TICKET
+        self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1001 created: Large report API timeout error 504")
+        self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (1 fact: Custom enterprise export pipeline)")
+        self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide (relevance: 0.94)")
+        self._emit("Hindsight", "EXPERIENCE_SEARCHED", "info", "Past experience searched in bank 'alex_rivera': 0 experiences found (clean slate)")
+        self._emit("Groq", "DRAFT_GENERATED", "ok", "Initial draft #5001 generated based on documentation alone (Clear cache)")
+        self._emit("SQLite", "DRAFT_SAVED", "ok", "Draft #5001 saved to SQLite repository (status: pending)")
 
     def reject_ticket_1(self, reason: str = "Already tried clearing cache without effect") -> None:
         """Stage 2: Human rejects initial draft -> FAILURE retained."""
         self.rejection_reason = reason
         self.state = DemoState.REJECTED_FAILURE
+        self._emit("SQLite", "DRAFT_DISCARDED", "warn", f"Draft #5001 marked DISCARDED (Reason: {reason})")
+        self._emit("Mem0", "MEM0_BYPASSED", "info", "Bypassed Mem0: Rejected solution is unconfirmed, NOT saved as customer fact")
+        self._emit("Hindsight", "RETENTION_STARTED", "info", "Storing rejected troubleshooting attempt into bank 'alex_rivera'")
+        self._emit("Hindsight", "FAILURE_RECORDED", "warn", "Failure experience recorded: [DO NOT REPEAT] Cache clearing failed")
 
     def advance_to_ticket_2(self) -> None:
         """Stage 3: Second ticket recalls FAILURE and avoids repeated mistake."""
         self.state = DemoState.SECOND_TICKET
+        self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1002 created: API 504 recurring timeout (status: open)")
+        self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (1 fact)")
+        self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide (API timeout threshold raised to 90s)")
+        self._emit("Hindsight", "FAILURE_RECALLED", "warn", "Recalled 1 failure: Cache clearing previously failed (Do not repeat)")
+        self._emit("Groq", "DRAFT_GENERATED", "ok", "Draft #5002 generated (Avoided cache clearing; proposed timeout: 90s)")
+        self._emit("SQLite", "DRAFT_SAVED", "ok", "Draft #5002 saved to SQLite repository (status: pending)")
 
     def accept_ticket_2(self) -> None:
         """Stage 4: Human accepts proven fix -> SUCCESS retained."""
         self.state = DemoState.ACCEPTED_SUCCESS
+        self._emit("SQLite", "DRAFT_ACCEPTED", "ok", "Draft #5002 marked ACCEPTED by human agent")
+        self._emit("SQLite", "TICKET_RESOLVED", "ok", "Ticket #1002 marked RESOLVED")
+        self._emit("Mem0", "FACT_SAVED", "ok", "Confirmed resolution stored in Mem0: Timeout raised 30s → 90s")
+        self._emit("Hindsight", "RETENTION_STARTED", "info", "Storing verified resolution into bank 'alex_rivera'")
+        self._emit("Hindsight", "SUCCESS_RECORDED", "ok", "Proven fix recorded: [PROVEN FIX] Increase timeout to 90s")
 
     def advance_to_ticket_3(self) -> None:
         """Stage 5: Third ticket recalls SUCCESS + FAILURE + PREFERENCE + PATTERN."""
         self.state = DemoState.THIRD_TICKET
+        self._emit("SQLite", "TICKET_CREATED", "ok", "Ticket #1003 created: End-of-month batch export timeout (status: open)")
+        self._emit("Mem0", "CUSTOMER_RECALLED", "ok", "Customer profile recalled: Alex Rivera (2 confirmed facts)")
+        self._emit("RAG", "KNOWLEDGE_RETRIEVED", "ok", "Documentation retrieved: kb_api_guide")
+        self._emit("Hindsight", "FULL_RECALL", "ok", "Full historical recall: 4 experiences found (Fix, Failure, Preference, Pattern)")
+        self._emit("Groq", "DRAFT_GENERATED", "ok", "Personalized draft #5003 synthesized: 'Set export_timeout: 90s'")
+        self._emit("SQLite", "DRAFT_SAVED", "ok", "Draft #5003 saved to SQLite repository (status: pending)")
 
     def complete_learned_state(self) -> None:
         """Stage 6: Final learned state overview."""
         self.state = DemoState.LEARNED_STATE
+
+    def get_events(self, limit: int | None = None) -> list[dict[str, Any]]:
+        """Return chronological activity events with metadata."""
+        evs = [e.to_dict() for e in self.events]
+        if limit is not None:
+            return evs[-limit:]
+        return evs
 
     def get_current_payload(self) -> dict[str, Any]:
         """Produce the complete UI payload for the current demo state."""
