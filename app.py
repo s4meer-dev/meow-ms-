@@ -802,9 +802,46 @@ if app_mode == "🧪 DEMO MODE":
                     st.session_state.demo_step = "START"
                     st.rerun()
 
-
         with col_side:
-            st.markdown('<div class="meow-delta-panel"><div class="meow-card-header">System Observability Stream</div><div style="font-size:0.85rem;color:#94a3b8;">Event telemetry and data deltas activating...</div></div>', unsafe_allow_html=True)
+            # ---------------------------------------------------------------
+            # ZONE 3 & 4: WHAT CHANGED? & LIVE SYSTEM ACTIVITY (Secondary)
+            # ---------------------------------------------------------------
+            # WHAT CHANGED? PANEL (Phase 8)
+            st.markdown(
+                f"""
+                <div class="meow-delta-panel">
+                    <div class="meow-delta-title">⚡ WHAT CHANGED? (Data Deltas)</div>
+                    <div class="meow-delta-row">
+                        <div class="meow-delta-label">HINDSIGHT EXPERIENCE BANK</div>
+                        <div class="meow-delta-val">{deltas.get('hindsight', 'Unchanged')}</div>
+                    </div>
+                    <div class="meow-delta-row">
+                        <div class="meow-delta-label">MEM0 CUSTOMER FACTS</div>
+                        <div class="meow-delta-val">{deltas.get('mem0', 'Unchanged')}</div>
+                    </div>
+                    <div class="meow-delta-row" style="margin-bottom:0;">
+                        <div class="meow-delta-label">SQLITE REPOSITORY</div>
+                        <div class="meow-delta-val">{deltas.get('sqlite', 'Unchanged')}</div>
+                    </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # LIVE SYSTEM ACTIVITY PANEL (Phase 7)
+            events_html = ""
+            for ev in recent_events:
+                comp = ev["component"]
+                badge_class = f"badge-{comp.lower()}"
+                events_html += f"""
+                <div class="meow-event-item">
+                    <span class="meow-event-time">{ev['timestamp']}</span>
+                    <span class="meow-comp-badge {badge_class}">{comp}</span>
+                    <span class="meow-event-desc">{ev['description']}</span>
+                </div>
+                """
+
+            st.markdown('<div class="meow-activity-panel"><div class="meow-card-header">Live System Activity</div><div style="font-size:0.85rem;color:#94a3b8;">Streaming real-time component telemetry...</div></div>', unsafe_allow_html=True)
 
     with tab_mem:
         st.info("Customer Memory Architecture (Mem0 + Hindsight)")
