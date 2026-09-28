@@ -103,6 +103,7 @@ class DemoLearningController:
     """
     Deterministic state machine managing the Phase 7 demonstration scenario.
     Completely isolated from production customer data and live provider quotas.
+    Now equipped with real observable event streams and connected system projections.
     """
 
     def __init__(self) -> None:
@@ -317,6 +318,44 @@ class DemoLearningController:
                 "experience_count": len(self.demo_hindsight_experiences),
                 "experiences": [dict(e) for e in self.demo_hindsight_experiences],
             },
+        }
+
+    def get_deltas(self) -> dict[str, Any]:
+        """Compute observable data change deltas between states."""
+        if self.state == DemoState.FIRST_TICKET:
+            return {
+                "hindsight": "0 → 0 experiences (Clean slate, novel issue)",
+                "mem0": "1 customer fact active (Custom enterprise export pipeline)",
+                "sqlite": "Ticket #1001 created (OPEN), Draft #5001 created (PENDING)",
+            }
+        elif self.state == DemoState.REJECTED_FAILURE:
+            return {
+                "hindsight": "0 → 1 experience (🔴 DO NOT REPEAT: Cache clearing failed)",
+                "mem0": "Unchanged (Rejected draft is unconfirmed; NOT stored as fact)",
+                "sqlite": "Draft #5001: PENDING → DISCARDED",
+            }
+        elif self.state == DemoState.SECOND_TICKET:
+            return {
+                "hindsight": "1 failure recalled (Avoiding cache clearing)",
+                "mem0": "1 customer fact active",
+                "sqlite": "Ticket #1002 created (OPEN), Draft #5002 created (PENDING)",
+            }
+        elif self.state == DemoState.ACCEPTED_SUCCESS:
+            return {
+                "hindsight": "1 → 2 experiences (🟢 PROVEN FIX: Increase timeout 30s → 90s)",
+                "mem0": "1 → 2 facts (Added confirmed resolution: timeout raised to 90s)",
+                "sqlite": "Ticket #1002: OPEN → RESOLVED, Draft #5002: PENDING → ACCEPTED",
+            }
+        elif self.state in (DemoState.THIRD_TICKET, DemoState.LEARNED_STATE):
+            return {
+                "hindsight": "4 experiences recalled (Fix + Failure + Preference + Pattern)",
+                "mem0": "2 facts active",
+                "sqlite": "Ticket #1003 created (OPEN), Draft #5003 created (PENDING)",
+            }
+        return {
+            "hindsight": "0 experiences (Clean slate)",
+            "mem0": "1 fact active",
+            "sqlite": "0 tickets, 0 drafts",
         }
 
     def get_current_payload(self) -> dict[str, Any]:
