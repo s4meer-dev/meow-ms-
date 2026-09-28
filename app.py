@@ -503,12 +503,10 @@ if app_mode == "🧪 DEMO MODE":
         "🕒 LIVE ACTIVITY LOG",
     ])
 
-
     # -----------------------------------------------------------------------
     # TAB 1: DEMO WORKSPACE (4 Visual Zones)
     # -----------------------------------------------------------------------
     with tab_demo:
-
         # ZONE 1: TOP (Now Banner & Stage Heading)
         now_messages = {
             "START": "Alex Rivera has submitted a novel support issue.",
@@ -856,7 +854,55 @@ if app_mode == "🧪 DEMO MODE":
                 unsafe_allow_html=True,
             )
 
+        # -------------------------------------------------------------------
+        # ZONE 5: BOTTOM (Journey Stepper & Customer History Timeline)
+        # -------------------------------------------------------------------
+        s1 = "active" if step == "STEP_1_PROBLEM" else ""
+        s2 = "active" if step == "STEP_2_MEMORY" else ""
+        s3 = "active" if step == "STEP_3_RECOMMENDATION" else ""
+        s4 = "active" if step == "STEP_4_FEEDBACK" else ""
+        s5 = "active" if step in ("STEP_5_RETURNS", "STEP_6_SUCCESS") else ""
+        s6 = "active" if step == "STEP_7_FULL_RECALL" else ""
 
+        st.markdown(
+            f"""
+            <div class="meow-stepper">
+                <span class="meow-step-item {s1}">01 Problem</span>
+                <span class="meow-step-arrow">➔</span>
+                <span class="meow-step-item {s2}">02 Memory</span>
+                <span class="meow-step-arrow">➔</span>
+                <span class="meow-step-item {s3}">03 Response</span>
+                <span class="meow-step-arrow">➔</span>
+                <span class="meow-step-item {s4}">04 Human</span>
+                <span class="meow-step-arrow">➔</span>
+                <span class="meow-step-item {s5}">05 Learn</span>
+                <span class="meow-step-arrow">➔</span>
+                <span class="meow-step-item {s6}">06 Recall</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Customer History Mini-Timeline
+        tl1_color = "#ef4444" if state in (DemoState.REJECTED_FAILURE, DemoState.SECOND_TICKET, DemoState.ACCEPTED_SUCCESS, DemoState.THIRD_TICKET, DemoState.LEARNED_STATE) else "#64748b"
+        tl2_color = "#10b981" if state in (DemoState.ACCEPTED_SUCCESS, DemoState.THIRD_TICKET, DemoState.LEARNED_STATE) else "#64748b"
+        tl3_color = "#38bdf8" if state in (DemoState.THIRD_TICKET, DemoState.LEARNED_STATE) else "#64748b"
+
+        st.markdown(
+            f"""
+            <div style="display: flex; gap: 16px; align-items: center; background: #0d131f; border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; padding: 8px 16px; font-size: 0.8rem;">
+                <span style="font-size: 0.7rem; font-weight: 800; color: #94a3b8; text-transform: uppercase;">Customer History:</span>
+                <span><span style="color: {tl1_color};">●</span> 01 Cache clearing failed</span>
+                <span><span style="color: {tl2_color};">●</span> 02 Timeout 30s → 90s worked</span>
+                <span><span style="color: {tl3_color};">●</span> 03 Full history recalled</span>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    # -----------------------------------------------------------------------
+    # TAB 2: MEMORY VIEW (Mem0 & Hindsight)
+    # -----------------------------------------------------------------------
     with tab_mem:
         st.markdown('<div class="meow-card-header">Customer Memory Architecture (Mem0 + Hindsight)</div>', unsafe_allow_html=True)
         c_m1, c_m2 = st.columns(2)
@@ -995,3 +1041,129 @@ Future Recall (Avoids failure + applies fix)
 
 
 # ===========================================================================
+# LIVE PRODUCTION MODE: Real Connected SQLite, Mem0, ChromaDB, Providers
+# ===========================================================================
+else:
+    st.markdown('<div class="meow-card-header">Live Production Mode — Real Connected Services</div>', unsafe_allow_html=True)
+    st.caption("Interacting with live SQLite database, real Mem0 profiles, and production knowledge base.")
+
+    health = fetch_system_health()
+    h1, h2, h3, h4, h5, h6 = st.columns(6)
+    h1.caption(f"FastAPI  \n{'🟢 **Connected**' if health['fastapi'] == 'Connected' else '⚠️ **Offline**'}")
+    h2.caption(f"SQLite DB  \n{'🟢 **Connected**' if health['sqlite'] == 'Connected' else '⚠️ **Offline**'}")
+    h3.caption(f"Mem0 Facts  \n{'🟢 **Connected**' if health['mem0'] == 'Connected' else '⚠️ **Unavailable**'}")
+    h4.caption(f"ChromaDB RAG  \n{'🟢 **Connected**' if health['chromadb'] == 'Connected' else '⚠️ **Unavailable**'}")
+    if health['hindsight'] == 'Connected':
+        h5.caption("Hindsight  \n🟢 **Connected**")
+    elif "Quota" in health['hindsight']:
+        h5.caption("Hindsight  \n⚠️ **Quota Exhausted**")
+    else:
+        h5.caption("Hindsight  \n⚠️ **Unavailable**")
+    h6.caption("Groq LLM  \n🟢 **Connected**")
+
+    if "Quota" in health['hindsight']:
+        st.warning("⚠️ **Hindsight provider quota reached.** MEOW continues using customer facts and company knowledge.")
+
+    st.divider()
+
+    st.subheader("Tickets")
+    try:
+        tickets = fetch_tickets()
+    except Exception:
+        tickets = []
+        st.warning("⚠️ **FastAPI backend is offline.** Start the API with `python main.py` or switch to **🧪 DEMO MODE** in the sidebar.")
+
+    if tickets:
+        labels = [f"#{t['id']} | {t['status']} | {t['customer_email']} | {t['subject']}" for t in tickets]
+        selected_label = st.selectbox("Select ticket:", labels)
+        selected_ticket = tickets[labels.index(selected_label)]
+
+        c_cust, c_issue = st.columns([1, 2])
+        with c_cust:
+            st.markdown(f"**Customer:** {selected_ticket.get('customer_name') or 'Customer'}")
+            st.caption(f"🏢 {selected_ticket.get('customer_company') or 'Acme'} &nbsp;•&nbsp; ✉️ `{selected_ticket['customer_email']}`")
+        with c_issue:
+            st.markdown(f"**Issue:** {selected_ticket['subject']} &nbsp; `STATUS: {selected_ticket['status'].upper()}`")
+            st.caption(selected_ticket["description"])
+
+        if st.button("Generate Draft Response", use_container_width=True, type="primary"):
+            try:
+                new_draft = trigger_draft(selected_ticket["id"])
+                st.session_state[f"draft_{selected_ticket['id']}"] = new_draft
+                st.success("Draft generated successfully.")
+            except Exception as exc:
+                st.error(f"Draft generation failed: {exc}")
+
+        draft_data = st.session_state.get(f"draft_{selected_ticket['id']}") or fetch_draft(selected_ticket["id"])
+        if draft_data:
+            context = draft_data.get("context_used") or {}
+            st.markdown('<div class="meow-card-header">Generated Draft</div>', unsafe_allow_html=True)
+            edited_content = st.text_area(
+                "Review draft before sending:",
+                value=draft_data["content"],
+                height=140,
+                key=f"live_draft_box_{draft_data['id']}",
+            )
+
+            rejection_reason = st.selectbox(
+                "Rejection Reason (if discarding):",
+                ["", "Already tried", "Incorrect solution", "Customer-specific constraint", "Other"],
+                key=f"live_rej_reason_{draft_data['id']}",
+            )
+
+            col_acc, col_rej = st.columns(2)
+            with col_acc:
+                if st.button("✅ ACCEPT — TEACH MEOW (Resolution Succeeded)", use_container_width=True):
+                    try:
+                        updated = update_draft(draft_data["id"], edited_content, "accepted")
+                        st.session_state[f"draft_{selected_ticket['id']}"] = updated
+                        st.success("✓ **Resolution accepted and saved to customer memory.**")
+                    except Exception as exc:
+                        st.error(f"Failed to accept draft: {exc}")
+
+            with col_rej:
+                if st.button("❌ REJECT — TEACH MEOW (Approach Failed)", use_container_width=True):
+                    try:
+                        updated = update_draft(draft_data["id"], edited_content, "discarded", rejection_reason=rejection_reason)
+                        st.session_state[f"draft_{selected_ticket['id']}"] = updated
+                        st.info("✓ **Draft discarded and recorded in customer experience history.**")
+                    except Exception as exc:
+                        st.error(f"Failed to discard draft: {exc}")
+
+            with st.expander("Technical Details ▸", expanded=False):
+                st.json(sanitize_obj_for_display(context))
+
+    else:
+        st.info("No tickets created yet. Use the Create Ticket form below.")
+
+    st.divider()
+    st.subheader("Create New Ticket")
+    with st.form("create_ticket_form"):
+        c1, c2 = st.columns(2)
+        with c1:
+            customer_email = st.text_input("Customer Email", placeholder="alex@acme.io")
+            customer_name = st.text_input("Customer Name", placeholder="Alex Rivera")
+        with c2:
+            customer_company = st.text_input("Company", placeholder="Acme Labs")
+            priority = st.selectbox("Priority", ["low", "medium", "high", "urgent"], index=1)
+
+        subject = st.text_input("Subject")
+        description = st.text_area("Description", height=80)
+        submitted = st.form_submit_button("Create Ticket")
+        if submitted:
+            if customer_email and subject and description:
+                try:
+                    created = create_ticket({
+                        "customer_email": customer_email,
+                        "customer_name": customer_name or None,
+                        "customer_company": customer_company or None,
+                        "subject": subject,
+                        "description": description,
+                        "priority": priority,
+                        "auto_generate": True,
+                    })
+                    st.success(f"Ticket #{created['id']} created.")
+                except Exception as exc:
+                    st.error(f"Failed to create ticket: {exc}")
+            else:
+                st.warning("Please fill in email, subject, and description.")
