@@ -29,16 +29,25 @@ Customer Support Agent Live is an AI-powered support copilot that helps human su
 | Deployment | Docker, Docker Compose, GitHub Actions, EC2 guide |
 | Main value | Faster support replies grounded in company policy, history, and tool data |
 
-## MEOW Hindsight Memory (Phase 1 Foundation)
+## MEOW Experiential Learning & Connected Observability
 
-Hindsight is being integrated into MEOW as the cognitive experiential memory engine:
-- **Phase 1 Status:** Hindsight is introduced as an isolated, async-safe infrastructure layer with dedicated customer memory banks.
-- **Coexistence:** The existing Mem0 memory store remains fully active for current agent operations during migration.
-- **Documentation:** For architectural details and bank isolation designs, see [docs/hindsight_phase_1.md](docs/hindsight_phase_1.md).
+MEOW features closed-loop experiential learning and real-time observability across 4 storage layers:
+- **Relational Storage (`SQLite`)**: Deterministic ticket & draft lifecycles (`open`, `pending`, `accepted`, `discarded`).
+- **Customer Fact Memory (`Mem0`)**: Permanent verified customer profile traits and resolutions.
+- **Domain Knowledge (`ChromaDB / RAG`)**: Semantic vector retrieval over canonical technical documentation.
+- **Experiential Memory (`Hindsight`)**: Captures real operational outcomes (🔴 **Failures**, 🟢 **Successes**, 🟡 **Preferences**, 🟣 **Patterns**).
+
+### 4 Visual Zones in the MEOW Dashboard
+1. **Zone 1: Persistent "NOW" Activity Banner**: Real-time component telemetry and execution status.
+2. **Zone 2: Primary Story Action Card**: Step-by-step interactive narrative through ticket intake, draft review, agent decision, and adaptive recall.
+3. **Zone 3: "WHAT CHANGED?" Data Delta Panel**: Real-time state diffs showing exact before/after updates in Hindsight, Mem0, and SQLite.
+4. **Zone 4: "LIVE SYSTEM ACTIVITY" Telemetry Stream**: Chronological event trace with component execution badges.
+
+For the full demo presenter script and deep-dive architecture walkthrough, see [docs/CONNECTED_DEMO_GUIDE.md](docs/CONNECTED_DEMO_GUIDE.md).
 
 ### Quick Startup:
 ```bash
-# 1. Start Hindsight memory server:
+# 1. Start Hindsight memory server (optional for live production mode):
 docker compose up -d hindsight
 
 # 2. Run backend API (FastAPI):
@@ -46,6 +55,12 @@ uv run python main.py
 
 # 3. Run frontend dashboard (Streamlit):
 uv run python -m streamlit run app.py
+
+# 4. Run automated test suite (60 tests):
+uv run pytest tests/test_demo_observability.py tests/test_phase3_shadow.py -v
+
+# 5. Run end-to-end demo lifecycle verification:
+uv run python scripts/verify_demo.py
 ```
 
 
