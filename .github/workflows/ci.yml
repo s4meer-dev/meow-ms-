@@ -1,20 +1,23 @@
 name: CI
 
 on:
-  pull_request:
   push:
-    branches-ignore:
+    branches:
+      - main
+  pull_request:
+    branches:
       - main
 
 jobs:
   test:
+    name: Run Test Suite & Demo Verification
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -25,5 +28,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
-      - name: Run tests
-        run: uv run pytest -q
+      - name: Run Pytest test suite
+        run: uv run pytest tests/test_demo_observability.py tests/test_phase3_shadow.py -v
+
+      - name: Run Demo Lifecycle Verification
+        run: uv run python scripts/verify_demo.py
