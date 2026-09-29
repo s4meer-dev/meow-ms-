@@ -42,3 +42,15 @@ dev = [
   "playwright>=1.58.0",
   "pytest",
 ]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"
+markers = [
+  "unit: Unit tests verifying discrete functions and schemas",
+  "integration: Integration tests exercising service boundaries",
+  "observability: Tests validating event logging and system state projections",
+]
